@@ -1,0 +1,19 @@
+# nginx service
+# add symlink at /usr/lib/systemd/system
+# sudo systemctl enable nginx.service
+# sudo systemctl start nginx.service
+# sudo systemctl status nginx.service
+
+[Unit]
+Description=nginx service
+After=After=network.target docker.service
+
+[Service]
+Type=simple
+WorkingDirectory=/mnt/raid/nginx
+ExecStart=/usr/bin/docker-compose -f /mnt/raid/nginx/docker-compose.yml up
+ExecStop=/usr/bin/docker-compose -f /mnt/raid/nginx/docker-compose.yml down
+StandardInput=tty-force
+StandardOutput=file:/var/log/nginx.log
+StandardError=file:/var/log/nginx.log
+Restart=always

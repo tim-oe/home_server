@@ -1,0 +1,19 @@
+# jenkins service
+# add symlink at /usr/lib/systemd/system
+# sudo systemctl enable jenkins.service
+# sudo systemctl start jenkins.service
+# sudo systemctl status jenkins.service
+
+[Unit]
+Description=jenkins service
+After=After=network.target docker.service
+
+[Service]
+Type=simple
+WorkingDirectory=/mnt/raid/jenkins
+ExecStart=/usr/bin/docker-compose -f /mnt/raid/jenkins/docker-compose.yml up
+ExecStop=/usr/bin/docker-compose -f /mnt/raid/jenkins/docker-compose.yml down
+StandardInput=tty-force
+StandardOutput=file:/var/log/jenkins.log
+StandardError=file:/var/log/jenkins.log
+Restart=always

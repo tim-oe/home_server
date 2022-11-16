@@ -1,0 +1,19 @@
+# sonarqube service
+# add symlink at /usr/lib/systemd/system
+# sudo systemctl enable sonarqube.service
+# sudo systemctl start sonarqube.service
+# sudo systemctl status sonarqube.service
+
+[Unit]
+Description=sonarqube service
+After=After=network.target docker.service
+
+[Service]
+Type=simple
+WorkingDirectory=/mnt/raid/sonarqube
+ExecStart=/usr/bin/docker-compose -f /mnt/raid/sonarqube/docker-compose.yml up
+ExecStop=/usr/bin/docker-compose -f /mnt/raid/sonarqube/docker-compose.yml down
+StandardInput=tty-force
+StandardOutput=file:/var/log/sonarqube.log
+StandardError=file:/var/log/sonarqube.log
+Restart=always

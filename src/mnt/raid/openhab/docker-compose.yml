@@ -1,0 +1,31 @@
+version: '3.7'
+services:
+  # https://hub.docker.com/r/openhab/openhab/#!
+  openhab:
+    image: "openhab/openhab:3.3.0-alpine"
+    container_name: openhab
+    hostname: openhab
+    restart: always    
+    ports: 
+    # ui exposed via nginx
+      - 8881:8881
+    #  - 50000:50000
+    volumes:
+      - "/etc/localtime:/etc/localtime:ro"
+      - "/etc/timezone:/etc/timezone:ro"
+      - "./openhab_addons:/openhab/addons"
+      - "./openhab_conf:/openhab/conf"
+      - "./openhab_userdata:/openhab/userdata"
+    devices:
+      - "/dev/ttyACM0:/dev/ttyACM0"
+    environment:
+      OPENHAB_HTTP_PORT: "8881"
+      OPENHAB_HTTPS_PORT: "8543"
+      EXTRA_JAVA_OPTS: "-Duser.timezone=America/Chicago -Dgnu.io.rxtx.SerialPorts==/dev/ttyACM0"
+      USER_ID: "9001"
+      GROUP_ID: "9001"
+# common network to allow proxy      
+networks:
+  default:
+    external: true
+    name: share-net
