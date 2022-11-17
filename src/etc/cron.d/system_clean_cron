@@ -1,0 +1,15 @@
+#!/bin/bash
+#
+# system level cron to run last day of the month at 0200 CST
+# see https://stackoverflow.com/questions/53151124/jobs-in-etc-cron-d-are-not-working-on-ubuntu
+# chown root:root
+# chmod 644
+#
+# Version: 1
+MAILTO=""
+PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+
+0 0 2 L * ? * root /root/bin/clean.sh > /var/log/clean.cron.log 2>&1
+# for testing
+#*/1 * * * * root /root/bin/tomcat_clean.sh > /var/log/clean.cron.log 2>&1
+#5 * * * * root echo 'test' >> var/log/clean.cron.log

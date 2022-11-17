@@ -1,5 +1,5 @@
 # unifi service
-# /lib/systemd/system
+# copy to /usr/lib/systemd/system
 # sudo systemctl enable unifi.service
 # sudo systemctl start unifi.service
 # sudo systemctl status unifi.service
@@ -7,6 +7,7 @@
 [Unit]
 Description=unifi service
 After=After=network.target docker.service
+ConditionPathIsMountPoint=/mnt/raid
 
 [Service]
 Type=simple
@@ -18,3 +19,5 @@ StandardOutput=file:/var/log/unifi.log
 StandardError=file:/var/log/unifi.log
 Restart=always
 
+[Install]
+WantedBy=multi-user.target

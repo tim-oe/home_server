@@ -1,5 +1,5 @@
 # openhab service
-# add symlink at /usr/lib/systemd/system
+# copy to /usr/lib/systemd/system
 # sudo systemctl enable openhab.service
 # sudo systemctl start openhab.service
 # sudo systemctl status openhab.service
@@ -7,6 +7,7 @@
 [Unit]
 Description=openhab service
 After=After=network.target docker.service
+ConditionPathIsMountPoint=/mnt/raid
 
 [Service]
 Type=simple
@@ -17,3 +18,6 @@ StandardInput=tty-force
 StandardOutput=file:/var/log/openhab.log
 StandardError=file:/var/log/openhab.log
 Restart=always
+
+[Install]
+WantedBy=multi-user.target

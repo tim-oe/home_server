@@ -1,5 +1,5 @@
 # jenkins service
-# add symlink at /usr/lib/systemd/system
+# copy to /usr/lib/systemd/system
 # sudo systemctl enable jenkins.service
 # sudo systemctl start jenkins.service
 # sudo systemctl status jenkins.service
@@ -7,6 +7,7 @@
 [Unit]
 Description=jenkins service
 After=After=network.target docker.service
+ConditionPathIsMountPoint=/mnt/raid
 
 [Service]
 Type=simple
@@ -17,3 +18,6 @@ StandardInput=tty-force
 StandardOutput=file:/var/log/jenkins.log
 StandardError=file:/var/log/jenkins.log
 Restart=always
+
+[Install]
+WantedBy=multi-user.target

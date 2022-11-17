@@ -1,5 +1,5 @@
 # nexus service
-# add symlink at /usr/lib/systemd/system
+# copy to /usr/lib/systemd/system
 # sudo systemctl enable nexus.service
 # sudo systemctl start nexus.service
 # sudo systemctl status nexus.service
@@ -7,6 +7,7 @@
 [Unit]
 Description=nexus service
 After=After=network.target docker.service
+ConditionPathIsMountPoint=/mnt/raid
 
 [Service]
 Type=simple
@@ -17,3 +18,6 @@ StandardInput=tty-force
 StandardOutput=file:/var/log/nexus.log
 StandardError=file:/var/log/nexus.log
 Restart=always
+
+[Install]
+WantedBy=multi-user.target
