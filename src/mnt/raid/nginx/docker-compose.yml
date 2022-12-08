@@ -3,7 +3,7 @@ services:
   # https://hub.docker.com/_/nginx
   # https://github.com/nginxinc/docker-nginx
   nginx:
-    image: nginx
+    image: nginx:stable
     ports:
       - 80:80
     volumes:
