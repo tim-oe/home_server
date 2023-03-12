@@ -2,7 +2,7 @@ version: '3.7'
 services:
   # https://hub.docker.com/r/openhab/openhab/#!
   openhab:
-    image: "openhab/openhab:3.3.0-alpine"
+    image: "openhab/openhab:3.4.2-alpine"
     container_name: openhab
     hostname: openhab
     restart: always    
@@ -17,6 +17,8 @@ services:
       - "./openhab_conf:/openhab/conf"
       - "./openhab_userdata:/openhab/userdata"
     devices:
+    # tied to hub port connection
+    # https://aeotec.com/products/aeotec-z-stick-gen5/
       - "/dev/ttyACM0:/dev/ttyACM0"
     environment:
       OPENHAB_HTTP_PORT: "8881"

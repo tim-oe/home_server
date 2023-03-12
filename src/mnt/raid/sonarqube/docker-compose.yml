@@ -3,7 +3,7 @@ services:
   # https://hub.docker.com/_/sonarqube
   # https://github.com/SonarSource/docker-sonarqube/blob/master/tests/9/dce-compose-test/docker-compose.yml
   sonarqube:
-    image: sonarqube:community
+    image: sonarqube:lts-community
     hostname: sonarqube
     container_name: sonarqube
     depends_on:
