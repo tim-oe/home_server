@@ -62,7 +62,7 @@ task dockerNet {
 
 // set access for deployer user
 // https://unix.stackexchange.com/questions/195466/setting-multiple-groups-as-directory-owners
-task initAcl {
+tasks.register ('initAcl') {
     description = 'set access for dployere'
     group = "deploy stuff"
 
@@ -84,110 +84,81 @@ task initAcl {
     }
 }
 
-task deployJenkins {
+tasks.register('deployService') {
+    doLast {
+        ssh.run {
+            session(remotes.desktop) {
+                put from: "${project.rootDir}/src/mnt/raid/${project.svc}", into: '/mnt/raid'
+            }
+            session(remotes.desktop) {
+                def result = execute "sudo systemctl restart ${project.svc}.service"
+                println result
+            }
+        }
+    }
+}
+
+tasks.register('deployJenkins', GradleBuild) {
     description = 'deploy jenkins scripts and recycle service'
     group = "deploy stuff"
-
-    doLast {
-        ssh.run {
-            session(remotes.desktop) {
-                put from: "${project.rootDir}/src/mnt/raid/jenkins", into: '/mnt/raid'
-            }
-            session(remotes.desktop) {
-                def result = execute 'sudo systemctl restart jenkins.service'
-                println result
-            }
-        }
-    }
+    buildName = 'jenkins'
+    startParameter = startParameter.newInstance()
+    startParameter.projectProperties = ['svc':'jenkins']
+    tasks = ['deployService']
 }
 
-task deployNexus {
+tasks.register('deployNexus', GradleBuild) {
     description = 'deploy nexus scripts and recycle service'
     group = "deploy stuff"
-
-    doLast {
-        ssh.run {
-            session(remotes.desktop) {
-                put from: "${project.rootDir}/src/mnt/raid/nexus", into: '/mnt/raid'
-            }
-            session(remotes.desktop) {
-                def result = execute 'sudo systemctl restart nexus.service'
-                println result
-            }
-        }
-    }
+    buildName = 'nexus'
+    startParameter = startParameter.newInstance()
+    startParameter.projectProperties = ['svc':'nexus']
+    tasks = ['deployService']
 }
 
-task deployNginx {
+tasks.register('deployNginx', GradleBuild) {
     description = 'deploy nginx scripts and recycle service'
     group = "deploy stuff"
-
-    doLast {
-        ssh.run {
-            session(remotes.desktop) {
-                put from: "${project.rootDir}/src/mnt/raid/nginx", into: '/mnt/raid'
-            }
-            session(remotes.desktop) {
-                def result = execute 'sudo systemctl restart nginx.service'
-                println result
-            }
-        }
-    }
+    buildName = 'nginx'
+    startParameter = startParameter.newInstance()
+    startParameter.projectProperties = ['svc':'nginx']
+    tasks = ['deployService']
 }
 
-task deployOpenhab {
+tasks.register('deployOpenhab', GradleBuild) {
     description = 'deploy openhab scripts and recycle service'
     group = "deploy stuff"
-
-    doLast {
-        ssh.run {
-            session(remotes.desktop) {
-                put from: "${project.rootDir}/src/mnt/raid/openhab", into: '/mnt/raid'
-            }
-            session(remotes.desktop) {
-                def result = execute 'sudo systemctl restart openhab.service'
-                println result
-            }
-        }
-    }
+    buildName = 'openhab'
+    startParameter = startParameter.newInstance()
+    startParameter.projectProperties = ['svc':'openhab']
+    tasks = ['deployService']
 }
 
-task deploySonarqube {
+tasks.register('deploySonarqube', GradleBuild) {
     description = 'deploy sonarqube scripts and recycle service'
     group = "deploy stuff"
-
-    doLast {
-        ssh.run {
-            session(remotes.desktop) {
-                put from: "${project.rootDir}/src/mnt/raid/sonarqube", into: '/mnt/raid'
-            }
-            session(remotes.desktop) {
-                def result = execute 'sudo systemctl restart sonarqube.service'
-                println result
-            }
-        }
-    }
+    buildName = 'unifi'
+    startParameter = startParameter.newInstance()
+    startParameter.projectProperties = ['svc':'sonarqube']
+    tasks = ['deployService']
 }
 
-task deployUnifi {
+tasks.register('deployUnifi', GradleBuild) {
     description = 'deploy unifi scripts and recycle service'
     group = "deploy stuff"
-
-    doLast {
-        ssh.run {
-            session(remotes.desktop) {
-                put from: "${project.rootDir}/src/mnt/raid/unifi", into: '/mnt/raid'
-            }
-            session(remotes.desktop) {
-                def result = execute 'sudo systemctl restart unifi.service'
-                println result
-            }
-        }
-    }
+    buildName = 'unifi'
+    startParameter = startParameter.newInstance()
+    startParameter.projectProperties = ['svc':'unifi']
+    tasks = ['deployService']
 }
 
-task deployAll(type: GradleBuild) {
+tasks.register('deployAll') {
     description = 'deploy all scripts scripts and recycle service'
     group = "deploy stuff"
-    tasks = ['deployUnifi', 'deploySonarqube', 'deployOpenhab', 'deployNginx', 'deployNexus', 'deployJenkins']
+    dependsOn 'deployUnifi' 
+    dependsOn 'deploySonarqube' 
+    dependsOn 'deployOpenhab'
+    dependsOn 'deployNginx'
+    dependsOn 'deployNexus'
+    dependsOn 'deployJenkins'
 }
