@@ -102,7 +102,6 @@ tasks.register('deployJenkins', GradleBuild) {
     description = 'deploy jenkins scripts and recycle service'
     group = "deploy stuff"
     buildName = 'jenkins'
-    startParameter = startParameter.newInstance()
     startParameter.projectProperties = ['svc':'jenkins']
     tasks = ['deployService']
 }
@@ -111,7 +110,6 @@ tasks.register('deployNexus', GradleBuild) {
     description = 'deploy nexus scripts and recycle service'
     group = "deploy stuff"
     buildName = 'nexus'
-    startParameter = startParameter.newInstance()
     startParameter.projectProperties = ['svc':'nexus']
     tasks = ['deployService']
 }
@@ -120,7 +118,6 @@ tasks.register('deployNginx', GradleBuild) {
     description = 'deploy nginx scripts and recycle service'
     group = "deploy stuff"
     buildName = 'nginx'
-    startParameter = startParameter.newInstance()
     startParameter.projectProperties = ['svc':'nginx']
     tasks = ['deployService']
 }
@@ -129,7 +126,6 @@ tasks.register('deployOpenhab', GradleBuild) {
     description = 'deploy openhab scripts and recycle service'
     group = "deploy stuff"
     buildName = 'openhab'
-    startParameter = startParameter.newInstance()
     startParameter.projectProperties = ['svc':'openhab']
     tasks = ['deployService']
 }
@@ -137,8 +133,7 @@ tasks.register('deployOpenhab', GradleBuild) {
 tasks.register('deploySonarqube', GradleBuild) {
     description = 'deploy sonarqube scripts and recycle service'
     group = "deploy stuff"
-    buildName = 'unifi'
-    startParameter = startParameter.newInstance()
+    buildName = 'sonarqube'
     startParameter.projectProperties = ['svc':'sonarqube']
     tasks = ['deployService']
 }
@@ -146,12 +141,15 @@ tasks.register('deploySonarqube', GradleBuild) {
 tasks.register('deployUnifi', GradleBuild) {
     description = 'deploy unifi scripts and recycle service'
     group = "deploy stuff"
-    buildName = 'unifi'
-    startParameter = startParameter.newInstance()
+    buildName = 'unifi' 
     startParameter.projectProperties = ['svc':'unifi']
     tasks = ['deployService']
 }
 
+/** 
+ * can't nest GradleBuild tasks so use dependsOn to group
+ * to call multiple GradleBuild tasks each thas has to have a unique buildName
+ */
 tasks.register('deployAll') {
     description = 'deploy all scripts scripts and recycle service'
     group = "deploy stuff"
