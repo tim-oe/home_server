@@ -1,26 +1,22 @@
-version: "3.7"
+---
 services:
-  # https://hub.docker.com/r/jacobalberty/unifi
-  # https://github.com/jacobalberty/unifi-docker 
   unifi:
-    image: jacobalberty/unifi:v7.3.83
+    image: "jacobalberty/unifi:v8.1.113"
     container_name: "unifi"
-    restart: always
+    restart: "always"
     volumes:
-      - ./unifi:/unifi
-      # need to provide ssl cert, private key, and CA cert as chain file
-      # https://github.com/jacobalberty/unifi-docker#certificate-support
-      - ./cert:/unifi/cert
+      - "./unifi:/unifi"
+      - "./cert:/unifi/cert"
     ports:
-      - 3478:3478/udp # STUN
-      - 10001:10001/udp # AP discovery
-      - 8882:8882/tcp # Device/ controller comm.
-      - 443:443/tcp # Controller GUI/API as seen in a web browser
+      - "3478:3478/udp"
+      - "10001:10001/udp"
+      - "8882:8882/tcp"
+      - "443:443/tcp"
     environment:
-      - UNIFI_HTTP_PORT=8882
-      - UNIFI_HTTPS_PORT=443
-      - TZ=America/Chicago
+      - "UNIFI_HTTP_PORT=8882"
+      - "UNIFI_HTTPS_PORT=443"
+      - "TZ=America/Chicago"
 networks:
   default:
     external: true
-    name: share-net
+    name: "share-net"

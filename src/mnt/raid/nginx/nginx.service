@@ -1,19 +1,19 @@
 # nginx service
-# copy to /usr/lib/systemd/system
+# sudo ln -s /mnt/raid/nginx/nginx.service /usr/lib/systemd/system/nginx.service
 # sudo systemctl enable nginx.service
 # sudo systemctl start nginx.service
 # sudo systemctl status nginx.service
 
 [Unit]
 Description=nginx service
-After=After=network.target docker.service
+After=network.target docker.service jenkins.service nexus.service openhab.service sonarqube.service
 ConditionPathIsMountPoint=/mnt/raid
 
 [Service]
 Type=simple
 WorkingDirectory=/mnt/raid/nginx
-ExecStart=/usr/bin/docker-compose -f /mnt/raid/nginx/docker-compose.yml up
-ExecStop=/usr/bin/docker-compose -f /mnt/raid/nginx/docker-compose.yml down
+ExecStart=/usr/bin/docker compose -f /mnt/raid/nginx/docker-compose.yml up
+ExecStop=/usr/bin/docker compose -f /mnt/raid/nginx/docker-compose.yml down
 StandardInput=tty-force
 StandardOutput=file:/var/log/nginx.log
 StandardError=file:/var/log/nginx.log
