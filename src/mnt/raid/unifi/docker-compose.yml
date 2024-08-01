@@ -3,7 +3,7 @@ services:
   # https://hub.docker.com/r/jacobalberty/unifi
   # https://github.com/jacobalberty/unifi-docker 
   unifi:
-    image: jacobalberty/unifi:v7.3.83
+    image: jacobalberty/unifi:v8.3
     container_name: "unifi"
     restart: always
     volumes:

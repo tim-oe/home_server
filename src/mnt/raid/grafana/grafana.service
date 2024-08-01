@@ -1,0 +1,25 @@
+# grafana service
+# copy to /usr/lib/systemd/system
+# sudo systemctl enable grafana.service
+# sudo systemctl start grafana.service
+# sudo systemctl status grafana.service
+
+[Unit]
+Description=grafana service
+Requires=network.target
+Requires=docker.service
+After=docker.service
+ConditionPathIsMountPoint=/mnt/raid
+
+[Service]
+Type=simple
+WorkingDirectory=/mnt/raid/grafana
+ExecStart=/usr/bin/docker-compose -f /mnt/raid/grafana/docker-compose.yml up
+ExecStop=/usr/bin/docker-compose -f /mnt/raid/grafana/docker-compose.yml down
+StandardInput=tty-force
+StandardOutput=file:/var/log/grafana.log
+StandardError=file:/var/log/grafana.log
+Restart=always
+
+[Install]
+WantedBy=multi-user.target

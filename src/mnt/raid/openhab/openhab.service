@@ -6,7 +6,8 @@
 
 [Unit]
 Description=openhab service
-After=After=network.target docker.service
+Requires=network.target
+Requires=docker.service
 ConditionPathIsMountPoint=/mnt/raid
 
 [Service]

@@ -18,6 +18,9 @@
  * see nested config
  */
 dockerCompose {
+    grafana {
+        useComposeFiles = ['src/mnt/raid/grafana/docker-compose.yml']
+    }
     jenkins {
         useComposeFiles = ['src/mnt/raid/jenkins/docker-compose.yml']
     }
@@ -91,11 +94,26 @@ tasks.register('deployService') {
                 put from: "${project.rootDir}/src/mnt/raid/${project.svc}", into: '/mnt/raid'
             }
             session(remotes.desktop) {
-                def result = execute "sudo systemctl restart ${project.svc}.service"
+                put from: "${project.rootDir}/src/mnt/raid/${project.svc}/${project.svc}.service", into: '/usr/lib/systemd/system'
+            }
+            session(remotes.desktop) {
+                def result = execute "sudo systemctl enable ${project.svc}.service"
                 println result
             }
+ //           session(remotes.desktop) {
+ //               def result = execute "sudo systemctl restart ${project.svc}.service"
+ //               println result
+ //           }
         }
     }
+}
+
+tasks.register('deployGrafana', GradleBuild) {
+    description = 'deploy grafana scripts and recycle service'
+    group = "deploy stuff"
+    buildName = 'jenkins'
+    startParameter.projectProperties = ['svc':'grafana']
+    tasks = ['deployService']
 }
 
 tasks.register('deployJenkins', GradleBuild) {
@@ -159,4 +177,5 @@ tasks.register('deployAll') {
     dependsOn 'deployNginx'
     dependsOn 'deployNexus'
     dependsOn 'deployJenkins'
+    dependsOn 'deployGrafana'
 }
