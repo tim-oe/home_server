@@ -4,12 +4,35 @@
  * This is a general purpose Gradle build.
  * Learn more about Gradle by exploring our samples at https://docs.gradle.org/7.6/samples
  */
+
  plugins { 
     // launch docker containers
     id "com.avast.gradle.docker-compose" version "0.16.11"
 
     // https://gradle-ssh-plugin.github.io/docs/
     id 'org.hidetake.ssh' version '2.11.2'
+
+    // https://github.com/diffplug/spotless/tree/main/plugin-gradle
+    id("com.diffplug.spotless") version "6.25.0"
+}
+
+repositories {
+    mavenCentral()
+    gradlePluginPortal()
+}
+
+spotless {
+    yaml {
+        target '**/*.yml'
+        jackson()
+        prettier()
+        indentWithSpaces()
+    }
+    groovyGradle {
+        target '*.gradle','src/gradle/*.gradle'
+        greclipse()
+        indentWithSpaces()
+    }
 }
 
 /**
@@ -44,11 +67,28 @@ dockerCompose {
 remotes {
     desktop {
         host = 'tec-desktop'
-        user = 'deployer'
+        user = 'ansible'
         // needs to be open ssh format and chmod 600
         // need to have entry in authorized hosts
         // https://gradle-ssh-plugin.github.io/docs/#__code_identity_code_public_key_authentication
-        identity = file("$project.gradle.gradleUserHomeDir/deployer.pem")
+        identity = file("$project.gradle.gradleUserHomeDir/ansible.pem")
+    }
+}
+
+tasks.register('resetHost') {
+    description = 'reset known host for tec-test'
+    group = "hosts"
+    doLast {
+        exec {
+            workingDir '.'
+            commandLine 'bash', '-c',
+                    "ssh-keygen -R tec-desktop"
+        }
+        exec {
+            workingDir '.'
+            commandLine 'bash', '-c',
+                    "ssh-keyscan -T 30 -H tec-desktop >> ~/.ssh/known_hosts"
+        }
     }
 }
 

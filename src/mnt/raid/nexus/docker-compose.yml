@@ -1,22 +1,16 @@
-version: "3"
-
+---
 services:
-# https://hub.docker.com/r/sonatype/docker-nexus3/
-# https://github.com/sonatype/docker-nexus3/blob/main/docker-compose.yml 
   nexus:
-    image: sonatype/nexus3
-    container_name: nexus
-    hostname: nexus
+    image: "sonatype/nexus3:latest"
+    container_name: "nexus"
+    hostname: "nexus"
     volumes:
       - "nexus-data:/nexus-data"
     ports:
       - "8081:8081"
-
 volumes:
   nexus-data: {}
-
-# common network to allow proxy      
 networks:
   default:
     external: true
-    name: share-net
+    name: "share-net"

@@ -1,5 +1,5 @@
 # unifi service
-# copy to /usr/lib/systemd/system
+# sudo ln -s /mnt/raid/unifi/unifi.service /usr/lib/systemd/system/unifi.service
 # sudo systemctl enable unifi.service
 # sudo systemctl start unifi.service
 # sudo systemctl status unifi.service
@@ -14,8 +14,8 @@ ConditionPathIsMountPoint=/mnt/raid
 [Service]
 Type=simple
 WorkingDirectory=/mnt/raid/unifi
-ExecStart=/usr/bin/docker-compose -f /mnt/raid/unifi/docker-compose.yml up
-ExecStop=/usr/bin/docker-compose -f /mnt/raid/unifi/docker-compose.yml down
+ExecStart=/usr/bin/docker compose -f /mnt/raid/unifi/docker-compose.yml up
+ExecStop=/usr/bin/docker compose -f /mnt/raid/unifi/docker-compose.yml down
 StandardInput=tty-force
 StandardOutput=file:/var/log/unifi.log
 StandardError=file:/var/log/unifi.log

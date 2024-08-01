@@ -1,44 +1,41 @@
-version: "3.7"
+---
 services:
-  # https://hub.docker.com/_/sonarqube
-  # https://github.com/SonarSource/docker-sonarqube/blob/master/tests/9/dce-compose-test/docker-compose.yml
   sonarqube:
-    image: sonarqube:lts-community
-    hostname: sonarqube
-    container_name: sonarqube
+    image: "sonarqube:community"
+    hostname: "sonarqube"
+    container_name: "sonarqube"
     depends_on:
-      - db
+      - "db"
     environment:
-      SONAR_JDBC_URL: jdbc:postgresql://db:5432/sonar
-      SONAR_JDBC_USERNAME: sonar
-      SONAR_JDBC_PASSWORD: sonar
+      SONAR_JDBC_URL: "jdbc:postgresql://db:5432/sonar"
+      SONAR_JDBC_USERNAME: "sonar"
+      SONAR_JDBC_PASSWORD: "sonar"
     volumes:
-      - ./sonarqube:/opt/sonarqube/data
-      - ./sonarqube_extensions:/opt/sonarqube/extensions
-      - ./sonarqube_logs:/opt/sonarqube/logs
+      - "sonarqube_data:/opt/sonarqube/data"
+      - "sonarqube_extensions:/opt/sonarqube/extensions"
+      - "sonarqube_logs:/opt/sonarqube/logs"
     ports:
       - "9000:9000"
   db:
-    # https://hub.docker.com/_/postgres
-    image: postgres:12
-    hostname: postgresql
-    container_name: postgresql
+    image: "postgres:13"
+    hostname: "postgresql"
+    container_name: "postgresql"
     environment:
-      POSTGRES_USER: sonar
-      POSTGRES_PASSWORD: sonar
-      POSTGRES_DB: sonar
+      POSTGRES_USER: "sonar"
+      POSTGRES_PASSWORD: "sonar"
+      POSTGRES_DB: "sonar"
     volumes:
-      - ./postgresql:/var/lib/postgresql
-      - ./postgresql_data:/var/lib/postgresql/data
-
+      - "postgresql:/var/lib/postgresql"
+      - "postgresql_data:/var/lib/postgresql/data"
+    ports:
+      - "5432:5432"
 volumes:
-  sonarqube_data:
-  sonarqube_extensions:
-  sonarqube_logs:
-  postgresql:
-  postgresql_data:
-
+  sonarqube_data: null
+  sonarqube_extensions: null
+  sonarqube_logs: null
+  postgresql: null
+  postgresql_data: null
 networks:
   default:
     external: true
-    name: share-net
+    name: "share-net"

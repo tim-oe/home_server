@@ -1,5 +1,5 @@
 # nexus service
-# copy to /usr/lib/systemd/system
+# sudo ln -s /mnt/raid/nexus/nexus.service /usr/lib/systemd/system/nexus.service
 # sudo systemctl enable nexus.service
 # sudo systemctl start nexus.service
 # sudo systemctl status nexus.service
@@ -14,8 +14,8 @@ ConditionPathIsMountPoint=/mnt/raid
 [Service]
 Type=simple
 WorkingDirectory=/mnt/raid/nexus
-ExecStart=/usr/bin/docker-compose -f /mnt/raid/nexus/docker-compose.yml up
-ExecStop=/usr/bin/docker-compose -f /mnt/raid/nexus/docker-compose.yml down
+ExecStart=/usr/bin/docker compose -f /mnt/raid/nexus/docker-compose.yml up
+ExecStop=/usr/bin/docker compose -f /mnt/raid/nexus/docker-compose.yml down
 StandardInput=tty-force
 StandardOutput=file:/var/log/nexus.log
 StandardError=file:/var/log/nexus.log

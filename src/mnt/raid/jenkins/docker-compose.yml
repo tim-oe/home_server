@@ -1,27 +1,21 @@
-version: '3.7'
+---
 services:
-  # https://hub.docker.com/r/jenkins/jenkins
-  # https://github.com/jenkinsci/docker/
   jenkins:
-    image: jenkins/jenkins:lts-jdk11
-    container_name: jenkins
-    hostname: jenkins
+    image: "jenkins/jenkins:latest-jdk17"
+    container_name: "jenkins"
+    hostname: "jenkins"
     privileged: true
-    user: root
+    user: "root"
     environment:
-      - JENKINS_OPTS=--httpPort=8880
-    #  - JENKINS_SLAVE_AGENT_PORT=50000
-    #  - JAVA_OPTS=
-    ports: 
-    # ui exposed via nginx
-      - 8880:8880
-      - 50000:50000
+      - "JENKINS_OPTS=--httpPort=8080"
+    ports:
+      - "8080:8080"
+      - "50000:50000"
     volumes:
-      - ./jenkins:/var/jenkins_home
-      - /var/run/docker.sock:/var/run/docker.sock
-      - /usr/local/bin/docker:/usr/local/bin/docker
-# common network to allow proxy      
+      - "jenkins_home:/var/jenkins_home"
+volumes:
+  jenkins_home: null
 networks:
   default:
     external: true
-    name: share-net
+    name: "share-net"
