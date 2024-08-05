@@ -12,7 +12,7 @@ After=docker.service
 ConditionPathIsMountPoint=/mnt/raid
 
 [Service]
-Type=simple
+Type=exec
 WorkingDirectory=/mnt/raid/nexus
 ExecStart=/usr/bin/docker compose -f /mnt/raid/nexus/docker-compose.yml up
 ExecStop=/usr/bin/docker compose -f /mnt/raid/nexus/docker-compose.yml down

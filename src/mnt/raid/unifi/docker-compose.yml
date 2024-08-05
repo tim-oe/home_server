@@ -3,7 +3,7 @@ services:
   unifi:
     image: jacobalberty/unifi:v8.3
     container_name: "unifi"
-    restart: "always"
+    restart: "unless-stopped"
     volumes:
       - "./unifi:/unifi"
       - "./cert:/unifi/cert"

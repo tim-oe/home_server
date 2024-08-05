@@ -137,7 +137,11 @@ tasks.register('deployService') {
                 put from: "${project.rootDir}/src/mnt/raid/${project.svc}/${project.svc}.service", into: '/usr/lib/systemd/system'
             }
             session(remotes.desktop) {
-                def result = execute "sudo systemctl enable ${project.svc}.service"
+                def result = execute "sudo systemctl daemon-reload"
+                println result
+            }
+            session(remotes.desktop) {
+                def result = execute "sudo systemctl disable ${project.svc}.service"
                 println result
             }
  //           session(remotes.desktop) {
@@ -151,7 +155,7 @@ tasks.register('deployService') {
 tasks.register('deployGrafana', GradleBuild) {
     description = 'deploy grafana scripts and recycle service'
     group = "deploy stuff"
-    buildName = 'jenkins'
+    buildName = 'grafana'
     startParameter.projectProperties = ['svc':'grafana']
     tasks = ['deployService']
 }
@@ -211,11 +215,11 @@ tasks.register('deployUnifi', GradleBuild) {
 tasks.register('deployAll') {
     description = 'deploy all scripts scripts and recycle service'
     group = "deploy stuff"
-    dependsOn 'deployUnifi' 
-    dependsOn 'deploySonarqube' 
-    dependsOn 'deployOpenhab'
-    dependsOn 'deployNginx'
-    dependsOn 'deployNexus'
-    dependsOn 'deployJenkins'
-    dependsOn 'deployGrafana'
+    dependsOn = ['deployUnifi', 
+        'deploySonarqube', 
+        'deployOpenhab',
+        'deployNginx',
+        'deployNexus',
+        'deployJenkins',
+        'deployGrafana']
 }

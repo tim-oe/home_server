@@ -4,6 +4,7 @@ services:
     image: "sonarqube:community"
     hostname: "sonarqube"
     container_name: "sonarqube"
+    restart: "unless-stopped"
     depends_on:
       - "db"
     environment:
@@ -20,6 +21,7 @@ services:
     image: "postgres:13"
     hostname: "postgresql"
     container_name: "postgresql"
+    restart: "unless-stopped"
     environment:
       POSTGRES_USER: "sonar"
       POSTGRES_PASSWORD: "sonar"

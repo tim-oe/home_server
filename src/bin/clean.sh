@@ -40,10 +40,10 @@ sudo apt autoremove --purge
 if command -v docker &> /dev/null
 then
 	echo 'truncating docker'
-	sudo docker system prune -f
-	sudo docker image prune -f
+	sudo docker system prune -af
+	sudo docker image prune -af
 	sudo docker container prune -f
-	sudo docker volume prune -f
+	sudo docker volume prune -af
 fi
 
 df -H

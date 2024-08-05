@@ -4,6 +4,7 @@ services:
     image: "jenkins/jenkins:latest-jdk17"
     container_name: "jenkins"
     hostname: "jenkins"
+    restart: "unless-stopped"
     privileged: true
     user: "root"
     environment:
