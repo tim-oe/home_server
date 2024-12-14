@@ -41,7 +41,7 @@ if command -v docker &> /dev/null
 then
 	echo 'truncating docker'
 	sudo docker system prune -f
-	sudo docker image prune -f
+	sudo docker image prune -a -f
 	sudo docker container prune -f
 	sudo docker volume prune -f
 fi

@@ -6,14 +6,14 @@
 
 [Unit]
 Description=unifi service
-Requires=network.target
-Requires=docker.service
-After=docker.service
-ConditionPathIsMountPoint=/mnt/raid
+Requires=network-online.target docker.service
+After=network-online.target docker.service
+RequiresMountsFor=/mnt/raid 
 
 [Service]
-Type=simple
+Type=exec
 WorkingDirectory=/mnt/raid/unifi
+ExecStartPre=-/usr/bin/docker compose -f /mnt/raid/unifi/docker-compose.yml pull
 ExecStart=/usr/bin/docker compose -f /mnt/raid/unifi/docker-compose.yml up
 ExecStop=/usr/bin/docker compose -f /mnt/raid/unifi/docker-compose.yml down
 StandardInput=tty-force
