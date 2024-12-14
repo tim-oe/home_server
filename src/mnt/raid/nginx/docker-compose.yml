@@ -2,6 +2,9 @@
 services:
   nginx:
     image: "nginx:stable-alpine-slim"
+    container_name: "nginx"
+    hostname: "nginx"
+    restart: "unless-stopped"
     ports:
       - "80:80"
     volumes:

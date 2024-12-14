@@ -12,7 +12,7 @@ After=docker.service
 ConditionPathIsMountPoint=/mnt/raid
 
 [Service]
-Type=simple
+Type=exec
 WorkingDirectory=/mnt/raid/sonarqube
 ExecStart=/usr/bin/docker compose -f /mnt/raid/sonarqube/docker-compose.yml up
 ExecStop=/usr/bin/docker compose -f /mnt/raid/sonarqube/docker-compose.yml down

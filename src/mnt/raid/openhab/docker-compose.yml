@@ -4,7 +4,7 @@ services:
     image: "openhab/openhab:latest-alpine"
     container_name: "openhab"
     hostname: "openhab"
-    restart: "always"
+    restart: "unless-stopped"
     ports:
       - "8881:8881"
     volumes:
