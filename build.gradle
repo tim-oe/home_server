@@ -106,21 +106,21 @@ task dockerNet {
 // set access for deployer user
 // https://unix.stackexchange.com/questions/195466/setting-multiple-groups-as-directory-owners
 tasks.register ('initAcl') {
-    description = 'set access for dployere'
+    description = 'set access for ansible user'
     group = "deploy stuff"
 
     doLast {
         ssh.run {
             session(remotes.desktop) {
-                def result = execute 'find  /mnt/raid/ -maxdepth 1 -type d \\( ! -iname ".*" \\) -exec sudo setfacl -m g:deployer:rwx {} \\;'
+                def result = execute 'sudo setfacl -m g:ansible:rwx /mnt/raid/services'
                 println result
             }
             session(remotes.desktop) {
-                def result = execute 'find  /mnt/raid/ -maxdepth 2 -type f \\( ! -iname "*.service" \\) -exec sudo setfacl -m g:deployer:rw {} \\;'
+                def result = execute 'find  /mnt/raid/services -maxdepth 1 -type d \\( ! -iname ".*" \\) -exec sudo setfacl -m g:ansible:rwx {} \\;'
                 println result
             }
             session(remotes.desktop) {
-                def result = execute 'find  /mnt/raid/ -maxdepth 2 -type f \\( ! -iname "*.yml" \\) -exec sudo setfacl -m g:deployer:rw {} \\;'
+                def result = execute 'find  /mnt/raid/services -maxdepth 2 -type f \\( ! -iname "*.yml" \\) -exec sudo setfacl -m g:ansible:rw {} \\;'
                 println result
             }
         }
@@ -131,23 +131,8 @@ tasks.register('deployService') {
     doLast {
         ssh.run {
             session(remotes.desktop) {
-                put from: "${project.rootDir}/src/mnt/raid/${project.svc}", into: '/mnt/raid'
+                put from: "${project.rootDir}/src/mnt/raid/${project.svc}", into: '/mnt/raid/services'
             }
-            session(remotes.desktop) {
-                put from: "${project.rootDir}/src/mnt/raid/${project.svc}/${project.svc}.service", into: '/usr/lib/systemd/system'
-            }
-            session(remotes.desktop) {
-                def result = execute "sudo systemctl daemon-reload"
-                println result
-            }
-            session(remotes.desktop) {
-                def result = execute "sudo systemctl disable ${project.svc}.service"
-                println result
-            }
- //           session(remotes.desktop) {
- //               def result = execute "sudo systemctl restart ${project.svc}.service"
- //               println result
- //           }
         }
     }
 }
@@ -208,6 +193,14 @@ tasks.register('deployUnifi', GradleBuild) {
     tasks = ['deployService']
 }
 
+tasks.register('deployVault', GradleBuild) {
+    description = 'deploy unifi scripts and recycle service'
+    group = "deploy stuff"
+    buildName = 'unifi' 
+    startParameter.projectProperties = ['svc':'vaultwarden']
+    tasks = ['deployService']
+}
+
 /** 
  * can't nest GradleBuild tasks so use dependsOn to group
  * to call multiple GradleBuild tasks each thas has to have a unique buildName
@@ -215,7 +208,8 @@ tasks.register('deployUnifi', GradleBuild) {
 tasks.register('deployAll') {
     description = 'deploy all scripts scripts and recycle service'
     group = "deploy stuff"
-    dependsOn = ['deployUnifi', 
+    dependsOn = ['deployVault',
+        'deployUnifi', 
         'deploySonarqube', 
         'deployOpenhab',
         'deployNginx',

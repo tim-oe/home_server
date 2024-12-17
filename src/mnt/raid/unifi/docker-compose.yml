@@ -1,3 +1,5 @@
+# https://hub.docker.com/r/jacobalberty/unifi
+# https://github.com/jacobalberty/unifi-docker/blob/master/docker-compose.yml
 ---
 services:
   unifi:
@@ -5,17 +7,22 @@ services:
     container_name: "unifi"
     restart: "unless-stopped"
     volumes:
+      # TODO move to volume
       - "./unifi:/unifi"
       - "./cert:/unifi/cert"
+      - unifi-run:/unifi/run
     ports:
       - "3478:3478/udp"
       - "10001:10001/udp"
       - "8882:8882/tcp"
-      - "443:443/tcp"
+      - "8443:443/tcp"
     environment:
       - "UNIFI_HTTP_PORT=8882"
       - "UNIFI_HTTPS_PORT=443"
       - "TZ=America/Chicago"
+volumes:
+  unifi-run:
+    name: unifi-run
 networks:
   default:
     external: true

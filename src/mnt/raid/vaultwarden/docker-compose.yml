@@ -1,0 +1,33 @@
+# https://hub.docker.com/r/vaultwarden/server
+# https://github.com/vineethmn/vaultwarden-docker-compose
+# https://github.com/dani-garcia/vaultwarden/wiki/SMTP-Configuration#googlegmail
+---
+services:
+  vaultwarden:
+    image: vaultwarden/server:latest
+    container_name: vaultwarden
+    hostname: vaultwarden
+    restart: unless-stopped
+    ports:
+     - 8860:80
+    volumes:
+      - vaultwarden-storage:/data:rw
+    environment:
+     - ROCKET_PORT=8860
+     - ADMIN_TOKEN=${ADMIN_TOKEN}
+     - WEBSOCKET_ENABLED=true
+     - SIGNUPS_ALLOWED=false
+     - SMTP_HOST=${SMTP_HOST}
+     - SMTP_FROM=${SMTP_FROM}
+     - SMTP_PORT=${SMTP_PORT}
+     - SMTP_SSL=${SMTP_SSL}
+     - SMTP_USERNAME=${SMTP_USERNAME}
+     - SMTP_PASSWORD=${SMTP_PASSWORD}
+     - DOMAIN=${DOMAIN}
+volumes:
+  vaultwarden-storage:
+    name: vaultwarden-storage
+networks:
+  default:
+    external: true
+    name: share-net

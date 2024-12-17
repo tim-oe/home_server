@@ -13,8 +13,12 @@ put desktop system to a purpose for local development.
 
 ## docker 
 - [docker-compose](https://docs.docker.com/compose/compose-file/#compose-file-structure-and-examples)
+- get volumes mapped to a given container
+    - ```docker inspect --type container -f '{{range $i, $v := .Mounts }}{{printf "%v\n" $v}}{{end}}' <container_id>```
+- shell into container
+    - ```docker exec -it <container name> /bin/bash```
 
-## systemd
+## systemd (not used as docker handles container lifecycle)
 - [general](https://www.freedesktop.org/software/systemd/man/systemd.unit.html)
 - [unit](https://manpages.ubuntu.com/manpages/xenial/en/man5/systemd.unit.5.html)
 - [service](https://manpages.ubuntu.com/manpages/xenial/en/man5/systemd.service.5.html)

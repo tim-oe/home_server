@@ -1,3 +1,5 @@
+# https://hub.docker.com/r/sonatype/nexus3
+# https://github.com/sonatype/docker-nexus3/blob/main/docker-compose.yml
 ---
 services:
   nexus:
@@ -10,7 +12,8 @@ services:
     ports:
       - "8081:8081"
 volumes:
-  nexus-data: {}
+  nexus-data:
+    name: nexus-data  
 networks:
   default:
     external: true

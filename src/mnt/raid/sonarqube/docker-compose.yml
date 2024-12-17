@@ -1,3 +1,5 @@
+# https://hub.docker.com/_/sonarqube
+# https://github.com/SonarSource/docker-sonarqube/blob/master/example-compose-files/sq-with-postgres/docker-compose.yml
 ---
 services:
   sonarqube:
@@ -12,9 +14,9 @@ services:
       SONAR_JDBC_USERNAME: "sonar"
       SONAR_JDBC_PASSWORD: "sonar"
     volumes:
-      - "sonarqube_data:/opt/sonarqube/data"
-      - "sonarqube_extensions:/opt/sonarqube/extensions"
-      - "sonarqube_logs:/opt/sonarqube/logs"
+      - "sonarqube-data:/opt/sonarqube/data"
+      - "sonarqube-extensions:/opt/sonarqube/extensions"
+      - "sonarqube-logs:/opt/sonarqube/logs"
     ports:
       - "9000:9000"
   db:
@@ -28,15 +30,20 @@ services:
       POSTGRES_DB: "sonar"
     volumes:
       - "postgresql:/var/lib/postgresql"
-      - "postgresql_data:/var/lib/postgresql/data"
+      - "postgresql-data:/var/lib/postgresql/data"
     ports:
       - "5432:5432"
 volumes:
-  sonarqube_data: null
-  sonarqube_extensions: null
-  sonarqube_logs: null
-  postgresql: null
-  postgresql_data: null
+  sonarqube-data:
+    name: sonarqube-data
+  sonarqube-extensions:
+    name: sonarqube-extensions
+  sonarqube-logs:
+    name: sonarqube-logs
+  postgresql:
+    name: postgresql
+  postgresql-data:
+    name: postgresql-data
 networks:
   default:
     external: true

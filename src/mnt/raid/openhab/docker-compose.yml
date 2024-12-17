@@ -1,3 +1,5 @@
+# https://hub.docker.com/r/openhab/openhab
+# https://www.openhab.org/docs/
 ---
 services:
   openhab:
@@ -10,12 +12,15 @@ services:
     volumes:
       - "/etc/localtime:/etc/localtime:ro"
       - "/etc/timezone:/etc/timezone:ro"
+      # TODO move to volumes
       - "./openhab_addons:/openhab/addons"
       - "./openhab_conf:/openhab/conf"
       - "./openhab_userdata:/openhab/userdata"
     devices:
+      # TODO move to envar
       - "/dev/ttyACM0:/dev/ttyACM0"
     environment:
+      # TODO move to envar
       OPENHAB_HTTP_PORT: 8881
       OPENHAB_HTTPS_PORT: 8543
       EXTRA_JAVA_OPTS: "-Duser.timezone=America/Chicago -Dgnu.io.rxtx.SerialPorts==/dev/ttyACM0"

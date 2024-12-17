@@ -1,3 +1,5 @@
+# https://www.jenkins.io/projects/gsoc/2023/project-ideas/docker-compose-build/
+# https://hub.docker.com/r/jenkins/jenkins
 ---
 services:
   jenkins:
@@ -13,9 +15,10 @@ services:
       - "8080:8080"
       - "50000:50000"
     volumes:
-      - "jenkins_home:/var/jenkins_home"
+      - "jenkins-home:/var/jenkins_home"
 volumes:
-  jenkins_home: null
+  jenkins-home:
+    name: jenkins-home  
 networks:
   default:
     external: true
