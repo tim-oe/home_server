@@ -1,17 +1,21 @@
 # https://hub.docker.com/r/vaultwarden/server
 # https://github.com/vineethmn/vaultwarden-docker-compose
 # https://github.com/dani-garcia/vaultwarden/wiki/SMTP-Configuration#googlegmail
+# https://github.com/dani-garcia/vaultwarden/wiki/Enabling-admin-page#secure-the-admin_token
 ---
 services:
   vaultwarden:
     image: vaultwarden/server:latest
     container_name: vaultwarden
     hostname: vaultwarden
+    networks:
+      - default
     restart: unless-stopped
     ports:
-     - 8860:80
+     # base port needs to map to rocket port   
+     - 8860:8860
     volumes:
-      - vaultwarden-storage:/data:rw
+     - vaultwarden-storage:/data:rw
     environment:
      - ROCKET_PORT=8860
      - ADMIN_TOKEN=${ADMIN_TOKEN}
@@ -20,10 +24,31 @@ services:
      - SMTP_HOST=${SMTP_HOST}
      - SMTP_FROM=${SMTP_FROM}
      - SMTP_PORT=${SMTP_PORT}
-     - SMTP_SSL=${SMTP_SSL}
+     - SMTP_SECURITY=${SMTP_SECURITY}
      - SMTP_USERNAME=${SMTP_USERNAME}
      - SMTP_PASSWORD=${SMTP_PASSWORD}
      - DOMAIN=${DOMAIN}
+    labels:
+      # for offen backup
+      - docker-volume-backup.stop-during-backup=true
+  backup:
+    # https://github.com/offen/docker-volume-backup/
+    image: offen/docker-volume-backup:latest
+    container_name: vaultwarden-backup
+    restart: always
+    environment:
+      BACKUP_CRON_EXPRESSION: "5 01 * * *"
+      BACKUP_FILENAME: backup-%Y-%m-%dT%H-%M-%S.tar.gz
+      BACKUP_LATEST_SYMLINK: backup-latest.tar.gz
+      BACKUP_PRUNING_PREFIX: backup-
+      BACKUP_RETENTION_DAYS: 7
+    volumes:
+      # force local TZ to avoid chron math
+      - /etc/timezone:/etc/timezone:ro
+      - /etc/localtime:/etc/localtime:ro
+      - vaultwarden-storage:/backup:ro
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - /media/docker_backup/docker/vaultwarden:/archive
 volumes:
   vaultwarden-storage:
     name: vaultwarden-storage
