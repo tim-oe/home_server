@@ -5,12 +5,15 @@ services:
   unifi:
     image: jacobalberty/unifi:v8.6.9
     container_name: "unifi"
+    hostname: unifi
     restart: "unless-stopped"
     volumes:
-      # TODO move to volume
-      - "./unifi:/unifi"
-      - "./cert:/unifi/cert"
+      - unifi:/unifi
       - unifi-run:/unifi/run
+      - ./cert:/unifi/cert
+      # force local TZ to avoid chron math
+      - /etc/timezone:/etc/timezone:ro
+      - /etc/localtime:/etc/localtime:ro
     ports:
       - "3478:3478/udp"
       - "10001:10001/udp"
@@ -20,7 +23,32 @@ services:
       - "UNIFI_HTTP_PORT=8882"
       - "UNIFI_HTTPS_PORT=443"
       - "TZ=America/Chicago"
+    labels:
+      # for offen backup
+      - docker-volume-backup.stop-during-backup=true
+  backup:
+    # https://github.com/offen/docker-volume-backup/
+    image: offen/docker-volume-backup:latest
+    container_name: unifi-backup
+    restart: always
+    environment:
+      BACKUP_CRON_EXPRESSION: "15 01 * * *"
+      BACKUP_FILENAME: backup-%Y-%m-%dT%H-%M-%S.tar.gz
+      BACKUP_LATEST_SYMLINK: backup-latest.tar.gz
+      BACKUP_PRUNING_PREFIX: backup-
+      BACKUP_RETENTION_DAYS: 7
+    volumes:
+      # force local TZ to avoid chron math
+      - /etc/timezone:/etc/timezone:ro
+      - /etc/localtime:/etc/localtime:ro
+      - unifi:/backup:ro
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - /media/docker_backup/docker/unifi:/archive
 volumes:
+  unifi:
+    # is created externally for backup and restore purposes
+    external: true
+    name: unifi
   unifi-run:
     name: unifi-run
 networks:

@@ -1,32 +1,31 @@
 # home_server
-put desktop system to a purpose for local development.
+home lab cloud like setup for development and learning 
 
-## build services
-- [jenkins](https://www.jenkins.io/)
-- [nexus](https://www.sonatype.com/products/nexus-repository)
-- [sonarqube](https://www.sonarqube.org/)
-- [nginx](https://nginx.org/en/)
+## services
+- build
+    - [jenkins](https://www.jenkins.io/)
+    - [nexus](https://www.sonatype.com/products/nexus-repository)
+    - [sonarqube](https://www.sonarqube.org/)
+- monitoring
+    - [grafana](https://grafana.com/)
+    - [influxdb](https://www.influxdata.com/)
+    - [telgraf](https://www.influxdata.com/time-series-platform/telegraf/)
+- [unifi WAP controller](https://community.ui.com/releases/UniFi-Network-Application-8-6-9/e4bd3f71-a2c4-4c98-b12a-a8b0b1c2178e)
+- [nginx reverse proxy](https://nginx.org/en/)
+- [volume backup](https://github.com/offen/docker-volume-backup/)
+- [home automation openhab (wip)](https://www.openhab.org/)
 
-## management services
-- [openhab](https://www.openhab.org/)
-- [Unifi Controller](https://community.ui.com/releases/UniFi-Network-Application-7-2-95/7adebab5-8c41-4989-835d-ab60dba55255)
+## TODO
+    - container monitoring dashboard
+        - releverage grafana
+    - custom container from nexus    
+    -[backup restore](https://offen.github.io/docker-volume-backup/how-tos/restore-volumes-from-backup.html)
 
-## docker 
-- [docker-compose](https://docs.docker.com/compose/compose-file/#compose-file-structure-and-examples)
+## FAQ 
+- [docker-compose syntax](https://docs.docker.com/compose/compose-file/#compose-file-structure-and-examples)
 - get volumes mapped to a given container
     - ```docker inspect --type container -f '{{range $i, $v := .Mounts }}{{printf "%v\n" $v}}{{end}}' <container_id>```
 - shell into container
     - ```docker exec -it <container name> /bin/bash```
-
-## systemd (not used as docker handles container lifecycle)
-- [general](https://www.freedesktop.org/software/systemd/man/systemd.unit.html)
-- [unit](https://manpages.ubuntu.com/manpages/xenial/en/man5/systemd.unit.5.html)
-- [service](https://manpages.ubuntu.com/manpages/xenial/en/man5/systemd.service.5.html)
-- [install](https://access.redhat.com/documentation/en-us/red_hat_enterprise_linux/8/html/configuring_basic_system_settings/assembly_working-with-systemd-unit-files_configuring-basic-system-settings)
-
-## TODO
-- [volume backup](https://www.geeksforgeeks.org/how-to-backup-docker-volumes/)
-    -[offen](https://github.com/offen/docker-volume-backup)
-    -[backup restore](https://offen.github.io/docker-volume-backup/how-tos/restore-volumes-from-backup.html)
-
-    
+- container shell to copy volume data (WIP)
+    - ```docker run -it --rm -v <src volume> -v <dest volume> bash:alpine3.21```    

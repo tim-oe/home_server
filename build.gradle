@@ -7,7 +7,8 @@
 
  plugins { 
     // launch docker containers
-    id "com.avast.gradle.docker-compose" version "0.16.11"
+    // https://github.com/avast/gradle-docker-compose-plugin
+    id "com.avast.gradle.docker-compose" version "0.17.12"
 
     // https://gradle-ssh-plugin.github.io/docs/
     id 'org.hidetake.ssh' version '2.11.2'
@@ -138,7 +139,7 @@ tasks.register('deployService') {
 }
 
 tasks.register('deployGrafana', GradleBuild) {
-    description = 'deploy grafana scripts and recycle service'
+    description = 'deploy grafana scripts'
     group = "deploy stuff"
     buildName = 'grafana'
     startParameter.projectProperties = ['svc':'grafana']
@@ -146,7 +147,7 @@ tasks.register('deployGrafana', GradleBuild) {
 }
 
 tasks.register('deployJenkins', GradleBuild) {
-    description = 'deploy jenkins scripts and recycle service'
+    description = 'deploy jenkins scripts'
     group = "deploy stuff"
     buildName = 'jenkins'
     startParameter.projectProperties = ['svc':'jenkins']
@@ -154,7 +155,7 @@ tasks.register('deployJenkins', GradleBuild) {
 }
 
 tasks.register('deployNexus', GradleBuild) {
-    description = 'deploy nexus scripts and recycle service'
+    description = 'deploy nexus scripts'
     group = "deploy stuff"
     buildName = 'nexus'
     startParameter.projectProperties = ['svc':'nexus']
@@ -162,7 +163,7 @@ tasks.register('deployNexus', GradleBuild) {
 }
 
 tasks.register('deployNginx', GradleBuild) {
-    description = 'deploy nginx scripts and recycle service'
+    description = 'deploy nginx scripts'
     group = "deploy stuff"
     buildName = 'nginx'
     startParameter.projectProperties = ['svc':'nginx']
@@ -170,7 +171,7 @@ tasks.register('deployNginx', GradleBuild) {
 }
 
 tasks.register('deployOpenhab', GradleBuild) {
-    description = 'deploy openhab scripts and recycle service'
+    description = 'deploy openhab scripts'
     group = "deploy stuff"
     buildName = 'openhab'
     startParameter.projectProperties = ['svc':'openhab']
@@ -178,7 +179,7 @@ tasks.register('deployOpenhab', GradleBuild) {
 }
 
 tasks.register('deploySonarqube', GradleBuild) {
-    description = 'deploy sonarqube scripts and recycle service'
+    description = 'deploy sonarqube scripts'
     group = "deploy stuff"
     buildName = 'sonarqube'
     startParameter.projectProperties = ['svc':'sonarqube']
@@ -186,7 +187,7 @@ tasks.register('deploySonarqube', GradleBuild) {
 }
 
 tasks.register('deployUnifi', GradleBuild) {
-    description = 'deploy unifi scripts and recycle service'
+    description = 'deploy unifi scripts'
     group = "deploy stuff"
     buildName = 'unifi' 
     startParameter.projectProperties = ['svc':'unifi']
@@ -194,9 +195,9 @@ tasks.register('deployUnifi', GradleBuild) {
 }
 
 tasks.register('deployVault', GradleBuild) {
-    description = 'deploy unifi scripts and recycle service'
+    description = 'deploy vaultwarden scripts'
     group = "deploy stuff"
-    buildName = 'unifi' 
+    buildName = 'vaultwarden' 
     startParameter.projectProperties = ['svc':'vaultwarden']
     tasks = ['deployService']
 }
@@ -206,7 +207,7 @@ tasks.register('deployVault', GradleBuild) {
  * to call multiple GradleBuild tasks each thas has to have a unique buildName
  */
 tasks.register('deployAll') {
-    description = 'deploy all scripts scripts and recycle service'
+    description = 'deploy all scripts scripts'
     group = "deploy stuff"
     dependsOn = ['deployVault',
         'deployUnifi', 
