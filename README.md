@@ -11,7 +11,9 @@ home lab cloud like setup for development and learning
     - [influxdb](https://www.influxdata.com/)
     - [telgraf](https://www.influxdata.com/time-series-platform/telegraf/)
 - [unifi WAP controller](https://community.ui.com/releases/UniFi-Network-Application-8-6-9/e4bd3f71-a2c4-4c98-b12a-a8b0b1c2178e)
-- [nginx reverse proxy](https://nginx.org/en/)
+- reverse proxy
+    - [nginx](https://nginx.org/en/)
+    - [ssl via certbot](https://certbot-dns-cloudflare.readthedocs.io/en/stable/)
 - [volume backup](https://github.com/offen/docker-volume-backup/)
 - [home automation openhab (wip)](https://www.openhab.org/)
 
@@ -20,6 +22,7 @@ home lab cloud like setup for development and learning
         - releverage grafana
     - custom container from nexus    
     -[backup restore](https://offen.github.io/docker-volume-backup/how-tos/restore-volumes-from-backup.html)
+    - [backup alternative for multi-volume](https://github.com/blacklabelops/volumerize)
 
 ## FAQ 
 - [docker-compose syntax](https://docs.docker.com/compose/compose-file/#compose-file-structure-and-examples)
@@ -28,4 +31,4 @@ home lab cloud like setup for development and learning
 - shell into container
     - ```docker exec -it <container name> /bin/bash```
 - container shell to copy volume data (WIP)
-    - ```docker run -it --rm -v <src volume> -v <dest volume> bash:alpine3.21```    
+    - ```docker run -it --rm -v <src volume>:/src:ro -v <dest volume>:/dest bash:alpine3.21```    

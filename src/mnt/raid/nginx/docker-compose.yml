@@ -34,6 +34,7 @@ services:
     container_name: "nginx-certbot"
     volumes:
       - certbot_etc:/etc/letsencrypt
+      - certbot_lib:/var/lib/letsencrypt
       - ./cloudflare.ini:/root/cloudflare.ini
       # sync local TZ and time
       - /etc/timezone:/etc/timezone:ro
@@ -50,6 +51,8 @@ services:
 volumes:
   certbot_etc:
     name: certbot_etc
+  certbot_lib:
+    name: certbot_lib
 networks:
   default:
     external: true
