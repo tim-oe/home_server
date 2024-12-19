@@ -16,6 +16,7 @@ services:
       # opnsense CA certs
       - "./cert:/ssl"
       - "./nginx.conf:/etc/nginx/nginx.conf"
+      - "./ssl-dhparams.pem:/ssl-dhparams.pem"
       - "./log:/var/log/nginx"
       # sync local TZ and time
       - /etc/timezone:/etc/timezone:ro
