@@ -12,6 +12,9 @@ services:
       - influxdb-data:/var/lib/influxdb
       - influxdb-data2:/var/lib/influxdb2
       - influxdb-conf:/etc/influxdb2
+      # sync local TZ and time
+      - /etc/timezone:/etc/timezone:ro
+      - /etc/localtime:/etc/localtime:ro
     environment:
       - INFLUXDB_DB=pimonitor
       - INFLUXDB_ADMIN_USER=${INFLUXDB_USERNAME}
@@ -26,6 +29,9 @@ services:
     volumes:
       - grafana-data:/var/lib/grafana
       - grafana-provisioning:/etc/grafana/provisioning
+      # sync local TZ and time
+      - /etc/timezone:/etc/timezone:ro
+      - /etc/localtime:/etc/localtime:ro
     depends_on:
       - influxdb
     environment:

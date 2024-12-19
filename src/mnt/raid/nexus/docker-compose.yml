@@ -9,6 +9,9 @@ services:
     restart: "unless-stopped"
     volumes:
       - "nexus-data:/nexus-data"
+      # sync local TZ and time
+      - /etc/timezone:/etc/timezone:ro
+      - /etc/localtime:/etc/localtime:ro
     ports:
       - "8081:8081"
 volumes:

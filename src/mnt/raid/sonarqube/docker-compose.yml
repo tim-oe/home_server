@@ -17,6 +17,9 @@ services:
       - "sonarqube-data:/opt/sonarqube/data"
       - "sonarqube-extensions:/opt/sonarqube/extensions"
       - "sonarqube-logs:/opt/sonarqube/logs"
+      # sync local TZ and time
+      - /etc/timezone:/etc/timezone:ro
+      - /etc/localtime:/etc/localtime:ro
     ports:
       - "9000:9000"
   db:
@@ -31,6 +34,9 @@ services:
     volumes:
       - "postgresql:/var/lib/postgresql"
       - "postgresql-data:/var/lib/postgresql/data"
+      # sync local TZ and time
+      - /etc/timezone:/etc/timezone:ro
+      - /etc/localtime:/etc/localtime:ro
     ports:
       - "5432:5432"
 volumes:

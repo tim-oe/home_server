@@ -15,7 +15,10 @@ services:
      # base port needs to map to rocket port   
      - 8860:8860
     volumes:
-     - vaultwarden-storage:/data:rw
+      - vaultwarden-storage:/data:rw
+      # sync local TZ and time
+      - /etc/timezone:/etc/timezone:ro
+      - /etc/localtime:/etc/localtime:ro
     environment:
      - ROCKET_PORT=8860
      - ADMIN_TOKEN=${ADMIN_TOKEN}

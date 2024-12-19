@@ -16,6 +16,9 @@ services:
       - "50000:50000"
     volumes:
       - "jenkins-home:/var/jenkins_home"
+      # sync local TZ and time
+      - /etc/timezone:/etc/timezone:ro
+      - /etc/localtime:/etc/localtime:ro
 volumes:
   jenkins-home:
     name: jenkins-home  
