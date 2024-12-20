@@ -7,6 +7,10 @@ services:
     container_name: "nexus"
     hostname: "nexus"
     restart: "unless-stopped"
+    # attempt to fix container restart issue
+    # networks:
+    #   default:
+    #     ipv4_address: 172.30.0.40
     volumes:
       - "nexus-data:/nexus-data"
       # sync local TZ and time

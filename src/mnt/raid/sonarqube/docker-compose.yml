@@ -3,7 +3,7 @@
 ---
 services:
   sonarqube:
-    image: "sonarqube:community"
+    image: "sonarqube:lts-community"
     hostname: "sonarqube"
     container_name: "sonarqube"
     restart: "unless-stopped"
