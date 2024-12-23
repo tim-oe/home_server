@@ -18,11 +18,12 @@ home lab cloud like setup for development and learning
 - [home automation openhab (wip)](https://www.openhab.org/)
 
 ## TODO
-    - container monitoring dashboard
-        - releverage grafana
-    - custom container from nexus    
-    -[backup restore](https://offen.github.io/docker-volume-backup/how-tos/restore-volumes-from-backup.html)
-    - [backup alternative for multi-volume](https://github.com/blacklabelops/volumerize)
+- container monitoring dashboard
+    - releverage grafana
+- custom container from nexus    
+-[backup restore](https://offen.github.io/docker-volume-backup/how-tos/restore-volumes-from-backup.html)
+- [multi volume backup](https://offen.github.io/docker-volume-backup/recipes/#running-multiple-instances-in-the-same-setup)
+- [backup alternative for multi-volume](https://github.com/blacklabelops/volumerize)
 
 ## FAQ 
 - [docker-compose syntax](https://docs.docker.com/compose/compose-file/#compose-file-structure-and-examples)
@@ -31,4 +32,4 @@ home lab cloud like setup for development and learning
 - shell into container
     - ```docker exec -it <container name> /bin/bash```
 - container shell to copy volume data (WIP)
-    - ```docker run -it --rm -v <src volume>:/src:ro -v <dest volume>:/dest bash:alpine3.21```    
+    - ```docker run -it --rm -v <src volume>:/src:ro -v <dest volume>:/dest bash:latest```    

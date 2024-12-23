@@ -2,6 +2,8 @@
 # https://github.com/vineethmn/vaultwarden-docker-compose
 # https://github.com/dani-garcia/vaultwarden/wiki/SMTP-Configuration#googlegmail
 # https://github.com/dani-garcia/vaultwarden/wiki/Enabling-admin-page#secure-the-admin_token
+# https://community.bitwarden.com/t/cant-download-attachements-from-self-hosted-bitwarden/30136/2
+# https://github.com/Haxxnet/Compose-Examples/blob/main/examples/vaultwarden/docker-compose.yml
 ---
 services:
   vaultwarden:
@@ -20,17 +22,22 @@ services:
       - /etc/timezone:/etc/timezone:ro
       - /etc/localtime:/etc/localtime:ro
     environment:
-     - ROCKET_PORT=8860
-     - ADMIN_TOKEN=${ADMIN_TOKEN}
-     - WEBSOCKET_ENABLED=true
-     - SIGNUPS_ALLOWED=false
-     - SMTP_HOST=${SMTP_HOST}
-     - SMTP_FROM=${SMTP_FROM}
-     - SMTP_PORT=${SMTP_PORT}
-     - SMTP_SECURITY=${SMTP_SECURITY}
-     - SMTP_USERNAME=${SMTP_USERNAME}
-     - SMTP_PASSWORD=${SMTP_PASSWORD}
-     - DOMAIN=${DOMAIN}
+      - ROCKET_PORT=8860
+      - ADMIN_TOKEN=${ADMIN_TOKEN}
+      - WEBSOCKET_ENABLED=true
+      - SIGNUPS_ALLOWED=false
+      - SMTP_HOST=${SMTP_HOST}
+      - SMTP_FROM=${SMTP_FROM}
+      - SMTP_PORT=${SMTP_PORT}
+      - SMTP_SECURITY=${SMTP_SECURITY}
+      - SMTP_USERNAME=${SMTP_USERNAME}
+      - SMTP_PASSWORD=${SMTP_PASSWORD}
+      - DOMAIN=${DOMAIN}
+      # configs
+      - globalSettings__attachment__baseDirectory=/data/attachments
+      - globalSettings__attachment__baseUrl=https://vaultwarden.tecronin.uk/attachments
+      - globalSettings__send__baseDirectory=/data/attachments/send
+      - globalSettings__send__baseUrl=https://vaultwarden.tecronin.uk/attachments/send
     labels:
       # for offen backup
       - docker-volume-backup.stop-during-backup=true
