@@ -24,6 +24,7 @@ home lab cloud like setup for development and learning
 -[backup restore](https://offen.github.io/docker-volume-backup/how-tos/restore-volumes-from-backup.html)
 - [multi volume backup](https://offen.github.io/docker-volume-backup/recipes/#running-multiple-instances-in-the-same-setup)
 - [backup alternative for multi-volume](https://github.com/blacklabelops/volumerize)
+- [watchtower](https://containrrr.dev/watchtower/introduction/)
 
 ## FAQ 
 - [docker-compose syntax](https://docs.docker.com/compose/compose-file/#compose-file-structure-and-examples)

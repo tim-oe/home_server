@@ -49,7 +49,6 @@ services:
     environment:
       BACKUP_CRON_EXPRESSION: "5 01 * * *"
       BACKUP_FILENAME: backup-%Y-%m-%dT%H-%M-%S.tar.gz
-      BACKUP_LATEST_SYMLINK: backup-latest.tar.gz
       BACKUP_PRUNING_PREFIX: backup-
       BACKUP_RETENTION_DAYS: 7
     volumes:

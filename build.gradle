@@ -5,10 +5,6 @@
  * Learn more about Gradle by exploring our samples at https://docs.gradle.org/7.6/samples
  */
  plugins { 
-    // launch docker containers
-    // https://github.com/avast/gradle-docker-compose-plugin
-    id "com.avast.gradle.docker-compose" version "0.17.12"
-
     // https://gradle-ssh-plugin.github.io/docs/
     id 'org.hidetake.ssh' version '2.11.2'
 
@@ -22,45 +18,20 @@ repositories {
 }
 
 spotless {
-    yaml {
-        target '**/*.yml'
-        jackson()
-        prettier()
-        indentWithSpaces()
-    }
+    
+    // https://github.com/diffplug/spotless/issues/1795
+    // TODO https://github.com/google/yamlfmt
+    // yaml {
+    //     target '**/*.yml'
+    //     jackson()
+    //     prettier()
+    //     indentWithSpaces()
+    // }
+
     groovyGradle {
         target '*.gradle','src/gradle/*.gradle'
         greclipse()
         indentWithSpaces()
-    }
-}
-
-/**
- * containers
- * https://github.com/avast/gradle-docker-compose-plugin
- * see nested config
- */
-dockerCompose {
-    grafana {
-        useComposeFiles = ['src/mnt/raid/grafana/docker-compose.yml']
-    }
-    jenkins {
-        useComposeFiles = ['src/mnt/raid/jenkins/docker-compose.yml']
-    }
-    nexus {
-        useComposeFiles = ['src/mnt/raid/nexus/docker-compose.yml']
-    }
-    nginx {
-        useComposeFiles = ['src/mnt/raid/nginx/docker-compose.yml']
-    }
-    sonar {
-        useComposeFiles = ['src/mnt/raid/sonarcube/docker-compose.yml']
-    }
-    openhab {
-        useComposeFiles = ['src/mnt/raid/openhab/docker-compose.yml']
-    }
-    unifi {
-        useComposeFiles = ['src/mnt/raid/unifi/docker-compose.yml']
     }
 }
 
