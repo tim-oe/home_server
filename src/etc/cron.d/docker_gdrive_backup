@@ -7,6 +7,6 @@
 #
 # Version: 1
 MAILTO=""
-PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/opt/rclone
 
 15 3 * * * root /root/bin/cron/docker_gdrive_backup.sh > /var/log/docker.gdrive.backup.log 2>&1
