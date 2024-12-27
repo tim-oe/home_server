@@ -1,6 +1,6 @@
 #!/bin/bash
 #
-# system level cron to run at 3:10 CST
+# system level cron to run at 3:15 CST
 # see https://stackoverflow.com/questions/53151124/jobs-in-etc-cron-d-are-not-working-on-ubuntu
 # chown root:root
 # chmod 644
@@ -9,4 +9,4 @@
 MAILTO=""
 PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
 
-10 3 * * * root /root/bin/cron/docker_nginx_restart.sh > /var/log/docker.nginx.restart.log 2>&1
+15 3 * * * root /root/bin/cron/docker_gdrive_backup.sh > /var/log/docker.gdrive.backup.log 2>&1

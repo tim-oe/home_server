@@ -16,12 +16,18 @@ home lab cloud like setup for development and learning
     - [ssl via certbot](https://certbot-dns-cloudflare.readthedocs.io/en/stable/)
 - [volume backup](https://github.com/offen/docker-volume-backup/)
 - [home automation openhab (wip)](https://www.openhab.org/)
+- [vaultwarden](https://github.com/dani-garcia/vaultwarden)
+
+## two level backup
+- local backup to nas via docker-volume-backup
+- cloud backup via [rclone](https://rclone.org/)
 
 ## TODO
 - container monitoring dashboard
-    - releverage grafana
+    -grafana/telegraf?
 - custom container from nexus    
 -[backup restore](https://offen.github.io/docker-volume-backup/how-tos/restore-volumes-from-backup.html)
+    - verified manual restor from backup of vault
 - [multi volume backup](https://offen.github.io/docker-volume-backup/recipes/#running-multiple-instances-in-the-same-setup)
 - [backup alternative for multi-volume](https://github.com/blacklabelops/volumerize)
 - [watchtower](https://containrrr.dev/watchtower/introduction/)
