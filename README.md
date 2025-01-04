@@ -22,6 +22,10 @@ home lab cloud like setup for development and learning
 - local backup to nas via docker-volume-backup
 - cloud backup via [rclone](https://rclone.org/)
 
+## kvm
+- [setup bridged network nm](https://gist.github.com/plembo/f7abd2d9b6f76e7afdece02dae7e5097)
+- [kvm bridge network](https://gist.github.com/plembo/a7b69f92953a76ab2d06533754b5e2bb)
+
 ## TODO
 - container monitoring dashboard
     -grafana/telegraf?
