@@ -3,7 +3,7 @@
 ---
 services:
   unifi:
-    image: jacobalberty/unifi:v8.6.9
+    image: jacobalberty/unifi:v9.0.114
     container_name: "unifi"
     hostname: unifi
     restart: "unless-stopped"

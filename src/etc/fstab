@@ -1,0 +1,2 @@
+# TODO ansbile
+//tec-nas/backup /media/docker_backup cifs guest,iocharset=utf8,file_mode=0777,dir_mode=0777,noperm 0 0

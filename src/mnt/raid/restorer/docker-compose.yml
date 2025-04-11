@@ -1,0 +1,13 @@
+---
+services:
+  restorer:
+    image: ubuntu:22.04
+    container_name: restorer
+    hostname: restorer
+    tty: true
+    volumes:
+      - restorer:/restorer:rw
+      - backup:/backup:ro
+volumes:
+  restorer:
+    name: restorer

@@ -21,6 +21,7 @@ home lab cloud like setup for development and learning
 ## two level backup
 - local backup to nas via docker-volume-backup
 - cloud backup via [rclone](https://rclone.org/)
+    - config file at /root/.config/rclone/rclone.conf
 
 ## kvm
 - [setup bridged network nm](https://gist.github.com/plembo/f7abd2d9b6f76e7afdece02dae7e5097)
@@ -44,3 +45,7 @@ home lab cloud like setup for development and learning
     - ```docker exec -it <container name> /bin/bash```
 - container shell to copy volume data (WIP)
     - ```docker run -it --rm -v <src volume>:/src:ro -v <dest volume>:/dest bash:latest```    
+- create compose compatible volume
+    - ```docker volume create --name "vol_name" --label "com.docker.compose.project=container_name" --label "com.docker.compose.version=$(docker compose version)" --label "com.docker.compose.volume=vol_name"```
+- connect to container
+    - ```docker exec -it container_name  /bin/bash```

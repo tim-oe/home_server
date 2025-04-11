@@ -67,9 +67,11 @@ task dockerNet {
     description = 'created shared docker network needs to run once'
     group = "docker stuff"
     doLast {
-        exec {
-            workingDir '.'
-            commandLine 'docker', 'network', 'create', '--driver', 'bridge', 'share-net'
+        ssh.run {
+            session(remotes.desktop) {
+                def result = execute 'sudo docker network create --driver bridge share-net'
+                println result
+            }
         }
     }
 }
@@ -187,4 +189,19 @@ tasks.register('deployAll') {
         'deployNexus',
         'deployJenkins',
         'deployGrafana']
+}
+
+
+tasks.register('dockerBuild') {
+    description = 'build docker util container'
+    group = "container build stuff"
+    doLast {
+        exec {
+            workingDir '.'
+            environment DOCKER_BUILDKIT: "1"
+            // chmod requires buildkit
+            // https://docs.docker.com/build/buildkit/#getting-started
+            commandLine 'docker', 'build', '-f', 'src/docker/Dockerfile',  '-t', 'tec/util', '.', '--no-cache'
+        }
+    }
 }

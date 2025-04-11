@@ -16,12 +16,15 @@ services:
     volumes:
       - "sonarqube-data:/opt/sonarqube/data"
       - "sonarqube-extensions:/opt/sonarqube/extensions"
-      - "sonarqube-logs:/opt/sonarqube/logs"
+      - "./log:/opt/sonarqube/logs"
       # sync local TZ and time
-      - /etc/timezone:/etc/timezone:ro
-      - /etc/localtime:/etc/localtime:ro
+      # - /etc/timezone:/etc/timezone:ro
+      # - /etc/localtime:/etc/localtime:ro
     ports:
-      - "9000:9000"
+      - target: 9000
+        published: 9000
+        protocol: tcp
+        mode: host    
   db:
     image: "postgres:13"
     hostname: "postgresql"
@@ -38,7 +41,10 @@ services:
       - /etc/timezone:/etc/timezone:ro
       - /etc/localtime:/etc/localtime:ro
     ports:
-      - "5432:5432"
+      - target: 5432
+        published: 5432
+        protocol: tcp
+        mode: host    
 volumes:
   sonarqube-data:
     name: sonarqube-data
