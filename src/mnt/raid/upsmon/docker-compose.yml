@@ -1,0 +1,33 @@
+# https://github.com/SuperioOne/nut_webgui
+# https://www.jeffgeerling.com/blog/2025/nut-on-my-pi-so-my-servers-dont-die
+services:
+  nutwebdesktop:
+    image: ghcr.io/superioone/nut_webgui:latest
+    restart: always
+    ports:
+      - 9010:9010
+    environment:
+      POLL_FREQ: "60"
+      POLL_INTERVAL: "5"
+      UPSD_ADDR: "192.168.1.210"
+      UPSD_PORT: "3493"
+      UPSD_USER: "admin"
+      UPSD_PASS: "adm&pwd123"
+      LISTEN: "0.0.0.0"
+      PORT: "9010"
+      LOG_LEVEL: "debug"
+  nutwebpimgr:
+    image: ghcr.io/superioone/nut_webgui:latest
+    restart: always
+    ports:
+      - 9020:9020
+    environment:
+      POLL_FREQ: "60"
+      POLL_INTERVAL: "5"
+      UPSD_ADDR: "192.168.1.43"
+      UPSD_PORT: "3493"
+      UPSD_USER: "admin"
+      UPSD_PASS: "adm&pwd123"
+      LISTEN: "0.0.0.0"
+      PORT: "9020"
+      LOG_LEVEL: "debug"

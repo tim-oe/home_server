@@ -10,6 +10,8 @@ services:
     volumes:
       - unifi:/unifi
       - unifi-run:/unifi/run
+      # https://hub.docker.com/r/jacobalberty/unifi#certificate-support
+      # chain.pem is the tec house interauthority cert
       - ./cert:/unifi/cert
       # force local TZ to avoid chron math
       - /etc/timezone:/etc/timezone:ro
