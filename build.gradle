@@ -132,6 +132,27 @@ tasks.register('deployScripts') {
     }
 }
 
+tasks.register('deployCron') {
+    description = 'deploy cron scripts to tec-desktop'
+    group = "deploy stuff"
+
+    doLast {
+        ssh.run {
+            session(remotes.desktop) {
+                def result = execute 'mkdir -p /tmp/cron.d'
+                println result
+            }
+            session(remotes.desktop) {
+                put from: Arrays.asList(new File("${project.rootDir}/src/etc/cron.d").listFiles()), into: '/tmp/cron.d'
+            }            
+            session(remotes.desktop) {
+                def result = execute 'sudo /mnt/raid/bin/croncp.sh'
+                println result
+            }
+        }
+    }
+}
+
 tasks.register('dockerBuild') {
     description = 'build docker util container'
     group = "container build stuff"

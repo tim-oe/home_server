@@ -8,9 +8,12 @@
 
 DATE=`date "+%Y%m%d"`
 date
-echo "restarting tomcat $DATE"
+echo "restarting nginx $DATE"
 
-cd /mnt/raid/services/nginx
-docker compose restart
+pushd /mnt/raid/services/nginx
+docker compose down
+docker compose up -d
+#docker exec -it nginx /bin/bash -c "nginx -s reload"
+popd
 
 echo 'complete'

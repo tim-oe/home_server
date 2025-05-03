@@ -3,7 +3,7 @@
 ---
 services:
   unifi:
-    image: jacobalberty/unifi:v9.0.114
+    image: jacobalberty/unifi:v9.1.120
     container_name: "unifi"
     hostname: unifi
     restart: "unless-stopped"
@@ -44,7 +44,7 @@ services:
       - /etc/localtime:/etc/localtime:ro
       - unifi:/backup:ro
       - /var/run/docker.sock:/var/run/docker.sock:ro
-      - /media/docker_backup/docker/unifi:/archive
+      - /mnt/backup/docker/unifi:/archive
 volumes:
   unifi:
     # is created externally for backup and restore purposes

@@ -57,7 +57,7 @@ services:
       - /etc/localtime:/etc/localtime:ro
       - vaultwarden-storage:/backup:ro
       - /var/run/docker.sock:/var/run/docker.sock:ro
-      - /media/docker_backup/docker/vaultwarden:/archive
+      - /mnt/backup/docker/vaultwarden:/archive
 volumes:
   vaultwarden-storage:
     name: vaultwarden-storage
