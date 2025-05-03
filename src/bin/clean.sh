@@ -1,8 +1,7 @@
 #!/bin/bash
 #
-# script to clean vm prior to export
+# script to clean system
 #
-
 echo 'purging temp'
 # purge files
 find /tmp/ -maxdepth 1 -type f -mtime +1 -exec rm -vfR {} \;
@@ -17,10 +16,9 @@ find /var/log/ -iname "*.backup" -type f -exec rm -vfR {} \;
 for i in 0 1 2 3 4 5 6 7 8 9;
         do find /var/log/ -iname *.$i -type f -exec rm -vfR {} \;;
 done
-sudo truncate -s 0 syslog
 journalctl --vacuum-time=1days
 
-if snap -v docker &> /dev/null
+if command -v snap &> /dev/null
 then
     echo 'truncating snap'
     sudo snap set system refresh.retain=2

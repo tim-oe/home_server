@@ -17,6 +17,8 @@ repositories {
     gradlePluginPortal()
 }
 
+apply from: 'src/gradle/services.gradle'
+
 spotless {
     
     // https://github.com/diffplug/spotless/issues/1795
@@ -85,6 +87,10 @@ tasks.register ('initAcl') {
     doLast {
         ssh.run {
             session(remotes.desktop) {
+                def result = execute 'sudo mkdir -p /mnt/raid/services'
+                println result
+            }
+            session(remotes.desktop) {
                 def result = execute 'sudo setfacl -m g:ansible:rwx /mnt/raid/services'
                 println result
             }
@@ -100,97 +106,31 @@ tasks.register ('initAcl') {
     }
 }
 
-tasks.register('deployService') {
+tasks.register('deployScripts') {
+    description = 'deploy scripts to tec-desktop'
+    group = "deploy stuff"
+
     doLast {
         ssh.run {
             session(remotes.desktop) {
-                put from: "${project.rootDir}/src/mnt/raid/${project.svc}", into: '/mnt/raid/services'
+                def result = execute 'sudo mkdir -p /mnt/raid/bin'
+                println result
+            }
+            session(remotes.desktop) {
+                def result = execute 'sudo chmod 777 /mnt/raid/bin'
+                println result
+            }
+            // https://stackoverflow.com/questions/34749398/gradle-ssh-plugin-copying-parent-folder-and-not-just-files
+            session(remotes.desktop) {
+                put from: Arrays.asList(new File("${project.rootDir}/src/bin").listFiles()), into: '/mnt/raid/bin'
+            }
+            session(remotes.desktop) {
+                def result = execute 'find  /mnt/raid/bin -name *.sh -type f -exec sudo chmod 755 {} \\;'
+                println result
             }
         }
     }
 }
-
-tasks.register('deployGrafana', GradleBuild) {
-    description = 'deploy grafana scripts'
-    group = "deploy stuff"
-    buildName = 'grafana'
-    startParameter.projectProperties = ['svc':'grafana']
-    tasks = ['deployService']
-}
-
-tasks.register('deployJenkins', GradleBuild) {
-    description = 'deploy jenkins scripts'
-    group = "deploy stuff"
-    buildName = 'jenkins'
-    startParameter.projectProperties = ['svc':'jenkins']
-    tasks = ['deployService']
-}
-
-tasks.register('deployNexus', GradleBuild) {
-    description = 'deploy nexus scripts'
-    group = "deploy stuff"
-    buildName = 'nexus'
-    startParameter.projectProperties = ['svc':'nexus']
-    tasks = ['deployService']
-}
-
-tasks.register('deployNginx', GradleBuild) {
-    description = 'deploy nginx scripts'
-    group = "deploy stuff"
-    buildName = 'nginx'
-    startParameter.projectProperties = ['svc':'nginx']
-    tasks = ['deployService']
-}
-
-tasks.register('deployOpenhab', GradleBuild) {
-    description = 'deploy openhab scripts'
-    group = "deploy stuff"
-    buildName = 'openhab'
-    startParameter.projectProperties = ['svc':'openhab']
-    tasks = ['deployService']
-}
-
-tasks.register('deploySonarqube', GradleBuild) {
-    description = 'deploy sonarqube scripts'
-    group = "deploy stuff"
-    buildName = 'sonarqube'
-    startParameter.projectProperties = ['svc':'sonarqube']
-    tasks = ['deployService']
-}
-
-tasks.register('deployUnifi', GradleBuild) {
-    description = 'deploy unifi scripts'
-    group = "deploy stuff"
-    buildName = 'unifi' 
-    startParameter.projectProperties = ['svc':'unifi']
-    tasks = ['deployService']
-}
-
-tasks.register('deployVault', GradleBuild) {
-    description = 'deploy vaultwarden scripts'
-    group = "deploy stuff"
-    buildName = 'vaultwarden' 
-    startParameter.projectProperties = ['svc':'vaultwarden']
-    tasks = ['deployService']
-}
-
-/** 
- * can't nest GradleBuild tasks so use dependsOn to group
- * to call multiple GradleBuild tasks each thas has to have a unique buildName
- */
-tasks.register('deployAll') {
-    description = 'deploy all scripts scripts'
-    group = "deploy stuff"
-    dependsOn = ['deployVault',
-        'deployUnifi', 
-        'deploySonarqube', 
-        'deployOpenhab',
-        'deployNginx',
-        'deployNexus',
-        'deployJenkins',
-        'deployGrafana']
-}
-
 
 tasks.register('dockerBuild') {
     description = 'build docker util container'

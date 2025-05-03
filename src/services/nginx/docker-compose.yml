@@ -1,0 +1,62 @@
+# https://hub.docker.com/_/nginx
+# https://github.com/linuxserver/docker-nginx
+# TODO https://github.com/NginxProxyManager/nginx-proxy-manager
+# TODO add backup of certbot volumes
+---
+services:
+  nginx:
+    image: "nginx:stable-alpine-slim"
+    container_name: "nginx"
+    hostname: "nginx"
+    restart: "unless-stopped"
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - certbot_etc:/etc/letsencrypt:ro
+      # opnsense CA certs
+      - "./cert:/ssl"
+      - "./nginx.conf:/etc/nginx/nginx.conf"
+      - "./.conf.d:/etc/nginx/conf.d"
+      # https://sunscrapers.com/blog/setting-up-https-on-nginx-with-certbot-and-letsencrypt/
+      - "./ssl-dhparams.pem:/ssl-dhparams.pem"
+      - "./log:/var/log/nginx"
+      # sync local TZ and time
+      - /etc/timezone:/etc/timezone:ro
+      - /etc/localtime:/etc/localtime:ro
+    extra_hosts:
+      # https://stackoverflow.com/questions/24319662/from-inside-of-a-docker-container-how-do-i-connect-to-the-localhost-of-the-mach
+      - "host.docker.internal:host-gateway"
+  certbot:
+    # https://gist.github.com/sergiks/4c1ccddc097e61e6fe5e45c53072a944
+    # https://hub.docker.com/r/certbot/dns-cloudflare
+    # https://certbot-dns-cloudflare.readthedocs.io/en/stable/
+    # TODO verify renewal
+    # https://eff-certbot.readthedocs.io/en/latest/using.html#setting-up-automated-renewal
+    image: certbot/dns-cloudflare
+    container_name: "nginx-certbot"
+    volumes:
+      - certbot_etc:/etc/letsencrypt
+      - certbot_lib:/var/lib/letsencrypt
+      - ./cloudflare.ini:/root/cloudflare.ini
+      # sync local TZ and time
+      - /etc/timezone:/etc/timezone:ro
+      - /etc/localtime:/etc/localtime:ro
+    command: >-
+      certonly --dns-cloudflare
+      --dns-cloudflare-credentials /root/cloudflare.ini
+      --dns-cloudflare-propagation-seconds 15
+      --email tecronin@gmail.com
+      --agree-tos --no-eff-email
+      --force-renewal
+      -d tecronin.uk
+      -d *.tecronin.uk
+volumes:
+  certbot_etc:
+    name: certbot_etc
+  certbot_lib:
+    name: certbot_lib
+networks:
+  default:
+    external: true
+    name: "share-net"

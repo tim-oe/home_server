@@ -4,30 +4,40 @@ services:
   nutwebdesktop:
     image: ghcr.io/superioone/nut_webgui:latest
     restart: always
+    hostname: "upsdesktop"
+    container_name: "upsdesktop"
     ports:
-      - 9010:9010
+      - 8010:8010
     environment:
       POLL_FREQ: "60"
       POLL_INTERVAL: "5"
       UPSD_ADDR: "192.168.1.210"
+      #UPSD_ADDR: "tec-desktop"
       UPSD_PORT: "3493"
       UPSD_USER: "admin"
       UPSD_PASS: "adm&pwd123"
       LISTEN: "0.0.0.0"
-      PORT: "9010"
+      PORT: "8010"
       LOG_LEVEL: "debug"
   nutwebpimgr:
     image: ghcr.io/superioone/nut_webgui:latest
+    hostname: "upspimgr"
+    container_name: "upspimgr"
     restart: always
     ports:
-      - 9020:9020
+      - 8020:8020
     environment:
       POLL_FREQ: "60"
       POLL_INTERVAL: "5"
       UPSD_ADDR: "192.168.1.43"
+      #UPSD_ADDR: "tec-pi-mgr"
       UPSD_PORT: "3493"
       UPSD_USER: "admin"
       UPSD_PASS: "adm&pwd123"
       LISTEN: "0.0.0.0"
-      PORT: "9020"
+      PORT: "8020"
       LOG_LEVEL: "debug"
+networks:
+  default:
+    external: true
+    name: "share-net"
