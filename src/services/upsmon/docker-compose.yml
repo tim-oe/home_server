@@ -11,8 +11,8 @@ services:
     environment:
       POLL_FREQ: "60"
       POLL_INTERVAL: "5"
-      UPSD_ADDR: "192.168.1.210"
-      #UPSD_ADDR: "tec-desktop"
+      #UPSD_ADDR: "192.168.1.210"
+      UPSD_ADDR: "tec-desktop.localdomain"
       UPSD_PORT: "3493"
       UPSD_USER: "admin"
       UPSD_PASS: "adm&pwd123"
@@ -29,8 +29,8 @@ services:
     environment:
       POLL_FREQ: "60"
       POLL_INTERVAL: "5"
-      UPSD_ADDR: "192.168.1.43"
-      #UPSD_ADDR: "tec-pi-mgr"
+      #UPSD_ADDR: "192.168.1.43"
+      UPSD_ADDR: "tec-pi-mgr.localdomain"
       UPSD_PORT: "3493"
       UPSD_USER: "admin"
       UPSD_PASS: "adm&pwd123"
