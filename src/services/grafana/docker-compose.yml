@@ -2,7 +2,7 @@
 # https://github.com/jkehres/docker-compose-influxdb-grafana
 services:
   influxdb:
-    image: influxdb:latest
+    image: influxdb:2.7.11
     container_name: "influxdb"
     hostname: "influxdb"
     restart: "unless-stopped"
@@ -20,7 +20,7 @@ services:
       - INFLUXDB_ADMIN_USER=${INFLUXDB_USERNAME}
       - INFLUXDB_ADMIN_PASSWORD=${INFLUXDB_PASSWORD}
   grafana:
-    image: grafana/grafana:latest
+    image: grafana/grafana:11.6.1
     container_name: "grafana"
     hostname: "grafana"
     restart: "unless-stopped"

@@ -10,4 +10,4 @@
 MAILTO=""
 PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
 
-0 0 2 L * ? * root /mnt/raid/bin/clean.sh > /var/log/clean.cron.log 2>&1
+0 7 L * * root /mnt/raid/bin/clean.sh > /var/log/clean.cron.log 2>&1

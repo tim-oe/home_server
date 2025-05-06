@@ -10,4 +10,4 @@
 MAILTO=""
 PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/opt/rclone
 
-15 3 * * * root /mnt/raid/bin/cron/docker_gdrive_backup.sh > /var/log/docker.gdrive.backup.log 2>&1
+15 8 * * * root /mnt/raid/bin/cron/docker_gdrive_backup.sh > /var/log/docker.gdrive.backup.log 2>&1

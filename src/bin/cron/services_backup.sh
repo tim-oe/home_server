@@ -4,7 +4,8 @@
 # runs from cron.d as root but should be set as follows
 # chown root:root
 # chmod 755
-#
+# when in doubt
+# rsync -av --no-perms --no-owner --no-group <src> <dest>
 
 DATE=`date "+%Y%m%d"`
 date

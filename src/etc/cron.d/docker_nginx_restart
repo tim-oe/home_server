@@ -10,4 +10,4 @@
 MAILTO=""
 PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
 
-0 1 * * * root /mnt/raid/bin/cron/docker_nginx_restart.sh > /var/log/docker.nginx.restart.log 2>&1
+0 6 * * * root /mnt/raid/bin/cron/docker_nginx_restart.sh > /var/log/docker.nginx.restart.log 2>&1
