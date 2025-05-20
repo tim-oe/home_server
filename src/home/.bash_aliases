@@ -1,0 +1,5 @@
+alias cls='printf "\033c"'
+alias vmup='virsh start desktop-vm'
+alias vmdown='virsh shutdown desktop-vm'
+alias vmedit='virsh edit desktop-vm'
+alias vmconsole='virsh console desktop-vm'

@@ -36,6 +36,10 @@ home lab cloud like setup for development and learning
 - [multi volume backup](https://offen.github.io/docker-volume-backup/recipes/#running-multiple-instances-in-the-same-setup)
 - [backup alternative for multi-volume](https://github.com/blacklabelops/volumerize)
 - [watchtower](https://containrrr.dev/watchtower/introduction/)
+- [portainer](https://www.howtogeek.com/devops/how-to-get-started-with-portainer-a-web-ui-for-docker/#install-portainer)
+- [nginx proxy mgr](https://nginxproxymanager.com/)
+- [pihole](https://pi-hole.net/)
+- [smtp relay](https://github.com/wader/postfix-relay)
 
 ## FAQ 
 - [docker-compose syntax](https://docs.docker.com/compose/compose-file/#compose-file-structure-and-examples)
