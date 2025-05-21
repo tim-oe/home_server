@@ -6,14 +6,13 @@
 # chmod 755
 #
 
-DATE=`date "+%Y%m%d"`
-date
-echo "restarting nginx $DATE"
+START=`date "+%Y-%m-%d %T"`
+echo "restarting nginx $START"
 
 pushd /mnt/raid/services/nginx
 docker compose down
 docker compose up -d
-#docker exec -it nginx /bin/bash -c "nginx -s reload"
 popd
 
-echo 'complete'
+END=`date "+%Y-%m-%d %T"`
+echo "complete nginx restart $END"

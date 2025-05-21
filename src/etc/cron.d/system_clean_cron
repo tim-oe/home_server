@@ -1,6 +1,6 @@
 #!/bin/bash
 #
-# system level cron to run last day of the month at 0200
+# system level cron to run first day of the month at 02 am CST
 # https://www.freeformatter.com/cron-expression-generator-quartz.html
 # see https://stackoverflow.com/questions/53151124/jobs-in-etc-cron-d-are-not-working-on-ubuntu
 # chown root:root
@@ -10,4 +10,4 @@
 MAILTO=""
 PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
 
-0 7 L * * root /mnt/raid/bin/clean.sh > /var/log/clean.cron.log 2>&1
+0 7 1 * * root /mnt/raid/bin/clean.sh > /var/log/clean.cron.log 2>&1

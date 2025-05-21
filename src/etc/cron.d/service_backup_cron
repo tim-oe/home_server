@@ -1,6 +1,6 @@
 #!/bin/bash
 #
-# system level cron to run every wednesday at 3 am
+# system level cron to run every wednesday at 3 am cst
 # https://www.freeformatter.com/cron-expression-generator-quartz.html
 # see https://stackoverflow.com/questions/53151124/jobs-in-etc-cron-d-are-not-working-on-ubuntu
 # chown root:root

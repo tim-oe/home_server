@@ -37,9 +37,14 @@ home lab cloud like setup for development and learning
 - [backup alternative for multi-volume](https://github.com/blacklabelops/volumerize)
 - [watchtower](https://containrrr.dev/watchtower/introduction/)
 - [portainer](https://www.howtogeek.com/devops/how-to-get-started-with-portainer-a-web-ui-for-docker/#install-portainer)
+    - [komodo](https://komo.do/docs/intro)
 - [nginx proxy mgr](https://nginxproxymanager.com/)
+    - [npmplus](https://github.com/ZoeyVid/NPMplus)
 - [pihole](https://pi-hole.net/)
 - [smtp relay](https://github.com/wader/postfix-relay)
+- [authentik](https://docs.goauthentik.io/docs/install-config/install/docker-compose)
+- [uptime-kuma](https://github.com/louislam/uptime-kuma)
+- [netbox](https://github.com/netbox-community/netbox)
 
 ## FAQ 
 - [docker-compose syntax](https://docs.docker.com/compose/compose-file/#compose-file-structure-and-examples)

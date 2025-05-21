@@ -1,6 +1,6 @@
 #!/bin/bash
 #
-# system level cron to run at 1 am
+# system level cron to run daily at 5 am CST
 # https://www.freeformatter.com/cron-expression-generator-quartz.html
 # see https://stackoverflow.com/questions/53151124/jobs-in-etc-cron-d-are-not-working-on-ubuntu
 # chown root:root
@@ -10,4 +10,4 @@
 MAILTO=""
 PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
 
-0 9 * * * root /mnt/raid/bin/cron/docker_nginx_restart.sh > /var/log/docker.nginx.restart.log 2>&1
+0 9 * * * root /mnt/raid/bin/cron/docker_nginx_restart.sh >> /var/log/docker.nginx.restart.log 2>&1
