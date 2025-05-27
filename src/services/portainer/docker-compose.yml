@@ -1,0 +1,21 @@
+# https://hub.docker.com/r/portainer/portainer-ce
+# https://docs.portainer.io/start/intro
+# https://github.com/portainer
+services:
+  portainer:
+    image: portainer/portainer-ce:latest
+    container_name: portainer
+    hostname: "portainer"
+    restart: "unless-stopped"
+    ports:
+      - 8050:9000
+    volumes:
+      - portainer_data:/data
+      - /var/run/docker.sock:/var/run/docker.sock
+volumes:
+  portainer_data:
+    name: portainer_data
+networks:
+  default:
+    external: true
+    name: "share-net"

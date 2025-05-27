@@ -36,6 +36,7 @@ home lab cloud like setup for development and learning
 - [multi volume backup](https://offen.github.io/docker-volume-backup/recipes/#running-multiple-instances-in-the-same-setup)
 - [backup alternative for multi-volume](https://github.com/blacklabelops/volumerize)
 - [watchtower](https://containrrr.dev/watchtower/introduction/)
+    - [DIUN](https://crazymax.dev/diun/)
 - [portainer](https://www.howtogeek.com/devops/how-to-get-started-with-portainer-a-web-ui-for-docker/#install-portainer)
     - [komodo](https://komo.do/docs/intro)
 - [nginx proxy mgr](https://nginxproxymanager.com/)
@@ -45,6 +46,8 @@ home lab cloud like setup for development and learning
 - [authentik](https://docs.goauthentik.io/docs/install-config/install/docker-compose)
 - [uptime-kuma](https://github.com/louislam/uptime-kuma)
 - [netbox](https://github.com/netbox-community/netbox)
+- [rustdesk](https://rustdesk.com/docs/en/self-host/rustdesk-server-oss/docker/)
+- [speedtest-tracker](https://github.com/alexjustesen/speedtest-tracker)
 
 ## FAQ 
 - [docker-compose syntax](https://docs.docker.com/compose/compose-file/#compose-file-structure-and-examples)

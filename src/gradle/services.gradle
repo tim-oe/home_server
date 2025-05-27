@@ -41,12 +41,8 @@ tasks.register('deployNginx', GradleBuild) {
     doLast {
         ssh.run {
             session(remotes.desktop) {
-                def result = execute 'sudo mkdir -p /mnt/raid/services/nginx/.conf.d'
-                println result
-            }
-            session(remotes.desktop) {
-                def result = execute 'sudo chmod 777 /mnt/raid/services/nginx/.conf.d'
-                println result
+                def result = executeSudo 'mkdir -p /mnt/raid/services/nginx/.conf.d'
+                result = executeSudo 'chmod 777 /mnt/raid/services/nginx/.conf.d'
             }
         }
     }
@@ -58,6 +54,14 @@ tasks.register('deployOpenhab', GradleBuild) {
     group = "deploy stuff"
     buildName = 'openhab'
     startParameter.projectProperties = ['svc':'openhab']
+    tasks = ['deployService']
+}
+
+tasks.register('deployPortainer', GradleBuild) {
+    description = 'deploy portainer scripts'
+    group = "deploy stuff"
+    buildName = 'portainer'
+    startParameter.projectProperties = ['svc':'portainer']
     tasks = ['deployService']
 }
 
@@ -101,11 +105,15 @@ tasks.register('deployAll') {
     description = 'deploy all scripts scripts'
     group = "deploy stuff"
     dependsOn = ['deployVault',
-        'deployUnifi', 
-        'deploySonarqube', 
-        'deployOpenhab',
+        'deployJenkins',
+        'deployGrafana',
         'deployNginx',
         'deployNexus',
-        'deployJenkins',
-        'deployGrafana']
+        'deployOpenhab',
+        'deployPortainer',
+        'deploySonarqube', 
+        'deployUnifi',
+        'deployUpsMon',
+        'deployVault' 
+        ]
 }

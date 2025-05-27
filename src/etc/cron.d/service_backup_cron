@@ -10,4 +10,4 @@
 MAILTO=""
 PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
 
-0 8 * * 4 root /mnt/raid/bin/service_backup.sh > /var/log/svc.bak.cron.log 2>&1
+0 8 * * * root /mnt/raid/bin/cron/services_backup.sh > /var/log/svc.bak.cron.log 2>&1

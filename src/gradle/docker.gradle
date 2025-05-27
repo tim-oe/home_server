@@ -1,0 +1,13 @@
+tasks.register('dockerBuild') {
+    description = 'build docker util container'
+    group = "container build stuff"
+    doLast {
+        exec {
+            workingDir '.'
+            environment DOCKER_BUILDKIT: "1"
+            // chmod requires buildkit
+            // https://docs.docker.com/build/buildkit/#getting-started
+            commandLine 'docker', 'build', '-f', 'src/docker/Dockerfile',  '-t', 'tec/util', '.', '--no-cache'
+        }
+    }
+}

@@ -1,7 +1,11 @@
 #!/bin/bash
 #
 # script to clean system
+# https://unix.stackexchange.com/questions/92346/why-does-find-mtime-1-only-return-files-older-than-2-days
 #
+START=`date "+%Y-%m-%d %T"`
+echo "starting clean system $START"
+
 echo 'purging temp'
 # purge files
 find /tmp/ -maxdepth 1 -type f -mtime +1 -exec rm -vfR {} \;
@@ -38,14 +42,15 @@ sudo apt autoremove --purge
 if command -v docker &> /dev/null
 then
 	echo 'truncating docker'
-	sudo docker system prune -af
+	#sudo docker system prune -af
 	sudo docker image prune -af
 	sudo docker container prune -f
-	sudo docker volume prune -af
+	#sudo docker volume prune -af
 fi
 
 df -H
 echo 'list large folders'
 du / -aBM 2>/dev/null | sort -nr | head -n 50
 
-echo 'complete'
+END=`date "+%Y-%m-%d %T"`
+echo "complete clean system $END"
