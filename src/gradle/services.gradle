@@ -97,6 +97,14 @@ tasks.register('deployVault', GradleBuild) {
     tasks = ['deployService']
 }
 
+tasks.register('deployWeather', GradleBuild) {
+    description = 'deploy weather scripts'
+    group = "deploy stuff"
+    buildName = 'weather'
+    startParameter.projectProperties = ['svc':'weather']
+    tasks = ['deployService']
+}
+
 /** 
  * can't nest GradleBuild tasks so use dependsOn to group
  * to call multiple GradleBuild tasks each thas has to have a unique buildName
@@ -114,6 +122,7 @@ tasks.register('deployAll') {
         'deploySonarqube', 
         'deployUnifi',
         'deployUpsMon',
-        'deployVault' 
+        'deployVault',
+        'deployWeather'
         ]
 }
