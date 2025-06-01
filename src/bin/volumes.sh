@@ -12,8 +12,8 @@ docker volume create --name "jenkins-home" --label "com.docker.compose.project=j
 
 docker volume create --name "nexus-data" --label "com.docker.compose.project=nexus" --label "com.docker.compose.version=2.35.1" --label "com.docker.compose.volume=nexus-data"
 
-docker volume create --name "certbot_etc" --label "com.docker.compose.project=certbot" --label "com.docker.compose.version=2.35.1" --label "com.docker.compose.volume=certbot_etc"
-docker volume create --name "certbot_lib" --label "com.docker.compose.project=certbot" --label "com.docker.compose.version=2.35.1" --label "com.docker.compose.volume=certbot_lib"
+docker volume create --name "certbot_etc" --label "com.docker.compose.project=nginx" --label "com.docker.compose.version=2.35.1" --label "com.docker.compose.volume=certbot_etc"
+docker volume create --name "certbot_lib" --label "com.docker.compose.project=nginx" --label "com.docker.compose.version=2.35.1" --label "com.docker.compose.volume=certbot_lib"
 
 docker volume create --name "openhab-addons" --label "com.docker.compose.project=openhab" --label "com.docker.compose.version=2.35.1" --label "com.docker.compose.volume=openhab-addons"
 docker volume create --name "openhab-conf" --label "com.docker.compose.project=openhab" --label "com.docker.compose.version=2.35.1" --label "com.docker.compose.volume=openhab-conf"

@@ -2,6 +2,8 @@
 # https://github.com/linuxserver/docker-nginx
 # TODO https://github.com/NginxProxyManager/nginx-proxy-manager
 # TODO add backup of certbot volumes
+# verify cert access
+# docker exec nginx ls -la /etc/letsencrypt/live/tecronin.uk/
 ---
 services:
   nginx:
@@ -14,48 +16,43 @@ services:
       - "443:443"
     volumes:
       - certbot_etc:/etc/letsencrypt:ro
-      # opnsense CA certs
-      - "./cert:/ssl"
-      - "./nginx.conf:/etc/nginx/nginx.conf"
-      - "./.conf.d:/etc/nginx/conf.d"
-      # https://sunscrapers.com/blog/setting-up-https-on-nginx-with-certbot-and-letsencrypt/
-      - "./ssl-dhparams.pem:/ssl-dhparams.pem"
-      - "./log:/var/log/nginx"
-      # sync local TZ and time
+      - ./nginx.conf:/etc/nginx/nginx.conf
+      - ./.conf.d:/etc/nginx/conf.d
+      # https://sunscrapers.com/blog/setting-up-https-on-nginx-with-certbot-and-letsencrypt/	  
+      - ./ssl-dhparams.pem:/ssl-dhparams.pem
+      - ./log:/var/log/nginx
       - /etc/timezone:/etc/timezone:ro
       - /etc/localtime:/etc/localtime:ro
+    # https://stackoverflow.com/questions/24319662/from-inside-of-a-docker-container-how-do-i-connect-to-the-localhost-of-the-mach
     extra_hosts:
-      # https://stackoverflow.com/questions/24319662/from-inside-of-a-docker-container-how-do-i-connect-to-the-localhost-of-the-mach
       - "host.docker.internal:host-gateway"
+
+  # https://hub.docker.com/r/certbot/dns-cloudflare
+  # check certs
+  # docker exec nginx-certbot certbot certificates
+  # check logs
+  # docker logs -f nginx-certbot
+  # dry run renewal
+  # docker exec nginx-certbot certbot renew --dry-run --dns-cloudflare --dns-cloudflare-credentials /cloudflare.ini
   certbot:
-    # https://gist.github.com/sergiks/4c1ccddc097e61e6fe5e45c53072a944
-    # https://hub.docker.com/r/certbot/dns-cloudflare
-    # https://certbot-dns-cloudflare.readthedocs.io/en/stable/
-    # TODO verify renewal
-    # https://eff-certbot.readthedocs.io/en/latest/using.html#setting-up-automated-renewal
     image: certbot/dns-cloudflare
     container_name: "nginx-certbot"
+    restart: "unless-stopped"
     volumes:
       - certbot_etc:/etc/letsencrypt
       - certbot_lib:/var/lib/letsencrypt
-      - ./cloudflare.ini:/root/cloudflare.ini
-      # sync local TZ and time
+      - ./cloudflare.ini:/cloudflare.ini
+      - ./certbot-manager.sh:/certbot-manager.sh:ro
       - /etc/timezone:/etc/timezone:ro
       - /etc/localtime:/etc/localtime:ro
-    command: >-
-      certonly --dns-cloudflare
-      --dns-cloudflare-credentials /root/cloudflare.ini
-      --dns-cloudflare-propagation-seconds 15
-      --email tecronin@gmail.com
-      --agree-tos --no-eff-email
-      --force-renewal
-      -d tecronin.uk
-      -d *.tecronin.uk
+    entrypoint: ["/bin/sh", "/certbot-manager.sh"]
+
 volumes:
   certbot_etc:
     name: certbot_etc
   certbot_lib:
     name: certbot_lib
+
 networks:
   default:
     external: true

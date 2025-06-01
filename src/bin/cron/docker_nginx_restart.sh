@@ -1,6 +1,6 @@
 #!/bin/bash
 #
-# script to recycle nginx
+# script to recycle nginx and certbot to renew certs if needed
 # runs from cron.d as root but should be set as follows
 # chown root:root
 # chmod 755
