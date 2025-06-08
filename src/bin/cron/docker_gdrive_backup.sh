@@ -12,6 +12,7 @@
 START=`date "+%Y-%m-%d %T"`
 echo "starting backup to gdrive $START"
 
+rclone sync --progress /mnt/backup/docker/services gdrive:/backup/docker/services
 rclone sync --progress /mnt/backup/docker/vaultwarden gdrive:/backup/services/vault
 rclone sync --progress /mnt/backup/docker/unifi gdrive:/backup/services/unifi
 rclone sync --progress /mnt/backup/weather/db gdrive:/backup/weather/db

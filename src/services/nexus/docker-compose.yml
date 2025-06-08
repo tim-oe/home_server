@@ -14,6 +14,7 @@ services:
       - /etc/localtime:/etc/localtime:ro
     ports:
       - "8081:8081"
+      - "8082:8082"
 volumes:
   nexus-data:
     name: nexus-data  

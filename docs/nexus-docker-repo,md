@@ -1,0 +1,277 @@
+# Nexus Docker Repository Setup Guide
+
+## Prerequisites
+- Docker installed and running
+- Administrative access to your system
+- Basic understanding of Docker and repository management
+
+## Step 1: Deploy Nexus Repository Manager
+
+### Using Docker Compose (Recommended)
+
+Create a `docker-compose.yml` file:
+
+```yaml
+version: '3.8'
+services:
+  nexus:
+    image: sonatype/nexus3:latest
+    container_name: nexus3
+    ports:
+      - "8081:8081"      # Nexus UI
+      - "8082:8082"      # Docker registry port
+    volumes:
+      - nexus-data:/nexus-data
+    environment:
+      - NEXUS_SECURITY_RANDOMPASSWORD=false
+    restart: unless-stopped
+
+volumes:
+  nexus-data:
+```
+
+Start the container:
+```bash
+docker-compose up -d
+```
+
+**Get initial admin password**
+   ```bash
+   docker exec nexus3 cat /nexus-data/admin.password
+   ```
+
+
+### Create Docker Hosted Repository
+
+1. **Navigate to Repositories**
+   - Gear icon (Administration) → Repository → Repositories
+   - Click "Create repository"
+
+2. **Select Docker (hosted)**
+
+3. **Configure repository settings**
+   - **Name**: `docker-private`
+   - **Online**: Checked
+   - **HTTP**: Port `8082`
+   - **Enable Docker V1 API**: Unchecked (recommended)
+   - **Allow anonymous docker pull**: Unchecked
+   - **Storage**: Select blob store (default is fine)
+   - **Hosted**: 
+     - Deployment policy: `Allow redeploy`
+   - **Cleanup**: Configure as needed
+
+4. **Save repository**
+
+### Optional: Create Docker Proxy Repository
+
+For caching Docker Hub images:
+
+1. **Create repository** → Docker (proxy)
+2. **Configure**:
+   - **Name**: `docker-proxy`
+   - **Online**: Checked
+   - **HTTP**: Port `8083`
+   - **Remote storage**: `https://registry-1.docker.io`
+   - **Docker Index**: `Use Docker Hub`
+
+### Optional: Create Docker Group Repository
+
+To combine hosted and proxy repositories:
+
+1. **Create repository** → Docker (group)
+2. **Configure**:
+   - **Name**: `docker-group`
+   - **HTTP**: Port `8084`
+   - **Member repositories**: Select `docker-private` and `docker-proxy`
+
+## Step 4: Create User Role for Docker Operations
+
+### Create Custom Role
+
+1. **Navigate to Roles**
+   - Administration → Security → Roles
+   - Click "Create role" → "Nexus role"
+
+2. **Configure Docker role**
+   - **Role ID**: `docker-user`
+   - **Role name**: `Docker User`
+   - **Description**: `Role for Docker push/pull operations`
+   - **Privileges**: Add the following:
+     - `nx-repository-view-docker-docker-private-add`
+     - `nx-repository-view-docker-docker-private-browse`
+     - `nx-repository-view-docker-docker-private-read`
+     - `nx-repository-view-docker-docker-private-edit`
+     - `nx-repository-admin-docker-docker-private-*` (for full access)
+
+3. **Save role**
+
+### Alternative: Use Built-in Roles
+
+You can also use these built-in roles:
+- `nx-admin`: Full administrative access
+- `nx-developer`: Can deploy to repositories
+- `nx-deployment`: Can deploy artifacts
+
+## Step 5: Create Docker User
+
+### Create User Account
+
+1. **Navigate to Users**
+   - Administration → Security → Users
+   - Click "Create local user"
+
+2. **Configure user**
+   - **ID**: `docker-user`
+   - **First name**: `Docker`
+   - **Last name**: `User`
+   - **Email**: `docker-user@company.com`
+   - **Status**: `Active`
+   - **Password**: Set strong password
+   - **Confirm password**: Repeat password
+   - **Roles**: Assign `docker-user` role (and optionally `nx-anonymous`)
+
+3. **Save user**
+
+## Step 6: Configure Docker Client
+
+### Configure Docker Daemon
+
+Add insecure registry to Docker daemon config (`/etc/docker/daemon.json`):
+
+```json
+{
+  "insecure-registries": [
+    "localhost:8082",
+    "your-nexus-server:8082"
+  ]
+}
+```
+
+Restart Docker daemon:
+```bash
+sudo systemctl restart docker
+```
+
+### Login to Nexus Registry
+
+```bash
+docker login localhost:8082
+# Username: docker-user
+# Password: (password you set)
+```
+
+## Step 7: Test Push and Pull Operations
+
+### Test Push
+
+1. **Tag an existing image**
+   ```bash
+   docker tag hello-world localhost:8082/hello-world:latest
+   ```
+
+2. **Push to Nexus**
+   ```bash
+   docker push localhost:8082/hello-world:latest
+   ```
+
+### Test Pull
+
+1. **Remove local image**
+   ```bash
+   docker rmi localhost:8082/hello-world:latest
+   ```
+
+2. **Pull from Nexus**
+   ```bash
+   docker pull localhost:8082/hello-world:latest
+   ```
+
+## Step 8: Production Considerations
+
+### Security Enhancements
+
+1. **Enable HTTPS**
+   - Configure reverse proxy (nginx/Apache)
+   - Use valid SSL certificates
+   - Update Docker daemon config for HTTPS
+
+2. **Network Security**
+   - Restrict access with firewall rules
+   - Use VPN or internal networks
+   - Consider network segmentation
+
+3. **Authentication**
+   - Integrate with LDAP/Active Directory
+   - Enable SAML SSO
+   - Implement strong password policies
+
+### Backup and Monitoring
+
+1. **Backup Strategy**
+   ```bash
+   # Backup nexus-data volume
+   docker run --rm -v nexus-data:/data -v $(pwd):/backup \
+     alpine tar czf /backup/nexus-backup.tar.gz /data
+   ```
+
+2. **Health Monitoring**
+   - Monitor container logs
+   - Set up health checks
+   - Monitor disk space usage
+
+### Environment Variables
+
+Useful environment variables for production:
+
+```yaml
+environment:
+  - NEXUS_SECURITY_RANDOMPASSWORD=false
+  - JAVA_MAX_MEM=2g
+  - JAVA_MIN_MEM=1g
+  - NEXUS_CONTEXT_PATH=/nexus
+```
+
+## Troubleshooting
+
+### Common Issues
+
+1. **Cannot push images**
+   - Check user permissions
+   - Verify repository is set to "Allow redeploy"
+   - Ensure Docker daemon trusts registry
+
+2. **Authentication failures**
+   - Verify user credentials
+   - Check role assignments
+   - Confirm repository permissions
+
+3. **Connection refused**
+   - Check port configuration
+   - Verify firewall settings
+   - Ensure Nexus is running
+
+### Useful Commands
+
+```bash
+# Check Nexus logs
+docker logs nexus3
+
+# Check container status
+docker ps
+
+# Access Nexus container shell
+docker exec -it nexus3 /bin/bash
+
+# Check Docker registry connectivity
+curl -u docker-user:password http://localhost:8082/v2/_catalog
+```
+
+## Summary
+
+You now have a fully functional Nexus Docker repository with:
+- Docker hosted repository for private images
+- Custom user role with appropriate permissions
+- User account for Docker operations
+- Proper authentication and authorization setup
+
+The repository is accessible at `localhost:8082` and ready for Docker push/pull operations.

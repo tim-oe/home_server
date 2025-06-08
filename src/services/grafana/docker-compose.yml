@@ -1,5 +1,9 @@
 # https://grafana.com/docs/grafana/latest/setup-grafana/installation/docker/
 # https://github.com/jkehres/docker-compose-influxdb-grafana
+# https://ivanahuckova.medium.com/setting-up-influxdb-v2-flux-with-influxql-in-grafana-926599a19eeb
+# https://hub.docker.com/_/influxdb
+# https://hub.docker.com/r/grafana/grafana
+# https://observability-360.com/docs/ViewDocument?id=influxdb-and-grafana
 services:
   influxdb:
     image: influxdb:2.7.11
@@ -37,6 +41,7 @@ services:
     environment:
       - GF_SECURITY_ADMIN_USER=${GRAFANA_USERNAME}
       - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_PASSWORD}
+      - GF_SECURITY_CSRF_TRUSTED_ORIGINS=${GRAFANA_DOMAIN}
 volumes:
   influxdb-data:
     name: influxdb-data

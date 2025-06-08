@@ -54,6 +54,7 @@ how-to-get-started-with-portainer-a-web-ui-for-docker/#install-portainer)
 - [netbox](https://github.com/netbox-community/netbox)
 - [rustdesk](https://rustdesk.com/docs/en/self-host/rustdesk-server-oss/docker/)
 - [speedtest-tracker](https://github.com/alexjustesen/speedtest-tracker)
+- [cockpit](https://hub.docker.com/r/markdegroot/cockpit-ubuntu)
 
 ## FAQ 
 - [docker-compose syntax](https://docs.docker.com/compose/compose-file/#compose-file-structure-and-examples)

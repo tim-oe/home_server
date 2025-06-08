@@ -16,7 +16,7 @@ EXCLUDE_DIRS="./nginx/log/*"
 mkdir -p $BACKUP_DIR
 
 pushd $ROOT_DIR
-zip -9 -r $BACKUP_DIR/svc-$DATE.zip . -x $EXCLUDE_DIRS
+zip -9 -r $BACKUP_DIR/svc-$DATE.zip . /etc/environment -x $EXCLUDE_DIRS
 popd
 
 # Remove old backups
