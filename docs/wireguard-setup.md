@@ -1,478 +1,338 @@
-# WireGuard VPN Setup Guide
+# Complete WireGuard VPN Setup Guide for OPNsense
 
-## OPNsense Server and Linux Client Configuration
-
----
-
-## Table of Contents
-
-1. [Prerequisites](#prerequisites)
-2. [OPNsense Server Configuration](#opnsense-server-configuration)
-3. [Linux Client Configuration](#linux-client-configuration)
-4. [Testing and Verification](#testing-and-verification)
-5. [Management and Troubleshooting](#management-and-troubleshooting)
-
----
+This guide provides a complete walkthrough for setting up WireGuard VPN on OPNsense, including all the necessary configuration steps that are often missed in basic tutorials.
 
 ## Prerequisites
 
-### OPNsense Requirements
+- OPNsense firewall (tested on 25.7.6)
+- WireGuard plugin installed (`os-wireguard`)
+- Local network access to OPNsense for initial configuration
+- Client device with WireGuard installed
 
-- OPNsense 21.1 or later
-- Public IP address or Dynamic DNS hostname
-- UDP port 51820 accessible from internet
+## Part 1: Install WireGuard Plugin
 
-### Linux Client Requirements
+1. Navigate to **System → Firmware → Plugins**
+2. Search for "wireguard"
+3. Install **os-wireguard** plugin
+4. Wait for installation to complete
 
-- Linux distribution with WireGuard support
-- Root/sudo access
-- WireGuard tools installed
+## Part 2: Configure WireGuard Server Instance
 
-### Network Planning
+### Create Server Instance
 
-- Choose a VPN subnet different from your LAN (e.g., `10.9.0.0/24`)
-- Plan IP assignments for each client
-- Example used in this guide:
-  - Server (OPNsense): `10.9.0.1/24`
-  - Client: `10.9.0.2/32`
+1. Go to **VPN → WireGuard → Instances**
+2. Click **+** to add a new instance
+3. Configure the instance:
+   - **Name:** wg0 (or your preferred name)
+   - **Public Key:** (auto-generated, note this for client config)
+   - **Private Key:** (auto-generated)
+   - **Listen Port:** 51820
+   - **Tunnel Address:** 10.9.0.1/24 (adjust subnet as needed)
+   - **Peers:** (leave empty, will configure next)
+4. Click **Save**
 
----
+### Enable WireGuard Service
 
-## OPNsense Server Configuration
+**CRITICAL STEP:** At the bottom of the Instances page, there is a checkbox to **"Enable WireGuard"**. This master switch must be enabled for the service to start.
 
-### Step 1: Enable WireGuard
-
-1. Navigate to **VPN → WireGuard → Settings**
-2. Check **Enable WireGuard**
+1. Scroll to the bottom of **VPN → WireGuard → Instances**
+2. Check the **"Enable WireGuard"** checkbox
 3. Click **Save**
+4. The WireGuard service should now appear in **System → Diagnostics → Services**
 
-### Step 2: Create WireGuard Instance (Server)
+## Part 3: Configure Client Peer
 
-1. Navigate to **VPN → WireGuard → Instances**
-2. Click **+** to add new instance
-3. Configure the following:
-   - **Name**: `wg0` (or preferred name)
-   - **Public Key/Private Key**: Click the gear icon to generate keypair
-   - **Listen Port**: `51820` (default)
-   - **Tunnel Address**: `10.9.0.1/24`
-   - **Peers**: Leave empty for now
+### Add Client Peer in OPNsense
+
+1. Go to **VPN → WireGuard → Peers**
+2. Click **+** to add a new peer
+3. Configure the peer:
+   - **Name:** client1 (or device name)
+   - **Public Key:** (paste client's public key)
+   - **Allowed IPs:** 10.9.0.2/32 (client's VPN IP)
+   - **Instance:** Select your instance (wg0)
 4. Click **Save**
-5. **Important**: Copy the **Public Key** - you'll need this for client configuration
 
-### Step 3: Configure Firewall Rules
+### Generate Client Configuration
 
-#### WAN Rule (Allow Incoming VPN Connections)
-
-1. Navigate to **Firewall → Rules → WAN**
-2. Click **+** to add rule
-3. Configure:
-   - **Action**: Pass
-   - **Interface**: WAN
-   - **Protocol**: UDP
-   - **Destination**: WAN address
-   - **Destination Port**: `51820`
-   - **Description**: "WireGuard VPN"
-4. Click **Save**
-5. Click **Apply Changes**
-
-#### WireGuard Interface Rules (Allow VPN Traffic)
-
-1. Navigate to **Firewall → Rules → WireGuard** (group)
-2. Click **+** to add rule
-3. Configure:
-   - **Action**: Pass
-   - **Protocol**: Any
-   - **Source**: WireGuard net (or `10.9.0.0/24`)
-   - **Destination**: Any
-   - **Description**: "Allow WireGuard clients to LAN"
-4. Click **Save**
-5. Click **Apply Changes**
-
-### Step 4: Verify Outbound NAT
-
-1. Navigate to **Firewall → NAT → Outbound**
-2. If set to **Automatic**, no action needed
-3. If set to **Manual/Hybrid**, add rule for WireGuard subnet `10.9.0.0/24`
-
----
-
-## Linux Client Configuration
-
-### Step 1: Install WireGuard
-
-```bash
-sudo apt update
-sudo apt install wireguard resolvconf
-```
-
-### Step 2: Generate Client Keypair
-
-```bash
-# Generate private key and derive public key
-wg genkey | tee privatekey | wg pubkey > publickey
-
-# View the keys
-cat privatekey  # Keep this SECRET
-cat publickey   # This goes to OPNsense
-```
-
-**Important**: Keep the private key secure and never share it.
-
-### Step 3: Add Client Peer in OPNsense
-
-1. Navigate to **VPN → WireGuard → Peers**
-2. Click **+** to add new peer
-3. Configure the peer with the following fields:
-4. Click **Save**
-5. Click **Apply Changes**
-
-#### Required Fields
-
-- **Enabled**: ✓ (checked)
-- **Name**: `client1` (descriptive name for your reference, e.g., "johns-laptop")
-- **Public Key**: Paste the client's public key from Step 2
-  - **Important**: This is the client's PUBLIC key, not the server's
-  - Get this from the `publickey` file you generated on the Linux client
-  - No generate wheel available here - must be generated on client first
-- **Allowed IPs**: `10.9.0.2/32`
-  - This is the VPN IP address assigned to this specific client
-  - Must be unique for each peer
-  - Use /32 for single IP assignment
-- **Instance**: Select `wg0` (your WireGuard instance)
-
-#### Optional Fields
-
-- **Pre-shared Key**: Click generate wheel icon (recommended for additional security)
-  - Provides post-quantum protection
-  - **Copy this PSK** - you'll need it for client config file
-  - If generated, must be added to client config
-- **Endpoint Address**: Leave BLANK for road warrior (mobile) clients
-  - Only use if client has static public IP
-  - Only needed for site-to-site VPNs
-- **Endpoint Port**: Leave BLANK for road warrior clients
-  - Only use with static endpoint address
-  - Only needed for site-to-site VPNs
-- **Keepalive**: Leave default or blank
-  - Client config handles this with PersistentKeepalive
-
-#### Additional Settings
-
-- **Description**: Optional text field for notes about this peer
-
-#### Peer Configuration Summary
-
-| Field | Road Warrior Client | Site-to-Site |
-|-------|-------------------|--------------|
-| Enabled | ✓ | ✓ |
-| Name | Descriptive | Descriptive |
-| Public Key | Client's public key | Remote site public key |
-| Allowed IPs | Single IP (x.x.x.x/32) | Remote subnet |
-| Endpoint Address | BLANK | Remote public IP |
-| Endpoint Port | BLANK | Remote port |
-| Pre-shared Key | Generate (optional) | Generate (optional) |
-| Instance | Select server instance | Select server instance |
-
-### Step 4: Create Client Configuration File
-
-Create the config file:
-
-```bash
-sudo nano /etc/wireguard/wg-client.conf
-```
-
-Add the following configuration:
+Create a client configuration file (e.g., `wg-client.conf`):
 
 ```ini
 [Interface]
-PrivateKey = <paste_contents_of_privatekey_file>
-Address = 10.9.0.2/32
-DNS = 192.168.1.1
+Address = 10.9.0.2/24
+PrivateKey = <client-private-key>
+DNS = 1.1.1.1, 1.0.0.1
 
 [Peer]
-PublicKey = <server_public_key_from_OPNsense_instance>
-PresharedKey = <PSK_generated_in_OPNsense>
-Endpoint = wg.tecronin.uk:51820
+PublicKey = <server-public-key-from-instance>
+Endpoint = <your-public-ip>:51820
 AllowedIPs = 0.0.0.0/0
-PersistentKeepalive = 25
+PersistentKeepalive = 30
 ```
 
-**Configuration Notes**:
+**DNS Options:**
 
-- **PrivateKey**: Your client's private key (from Step 2)
-- **Address**: Client's VPN IP address
-- **DNS**: Your LAN DNS server or router IP
-- **PublicKey**: Server's public key from OPNsense instance (NOT peer public key)
-- **PresharedKey**: Optional, remove line if not generated
-- **Endpoint**: Can be hostname (with Dynamic DNS) or public IP address
-- **AllowedIPs**:
-  - `0.0.0.0/0` = Route all traffic through VPN
-  - `192.168.1.0/24` = Only route LAN traffic (split-tunnel)
-- **PersistentKeepalive**: Keeps connection alive through NAT
+- Use `1.1.1.1, 1.0.0.1` (Cloudflare) for fast public DNS
+- Use `8.8.8.8, 8.8.4.4` (Google) as alternative
+- Use `10.9.0.1` to route DNS through OPNsense (slower but more private)
 
-### Step 5: Set Proper Permissions
+**AllowedIPs Options:**
+
+- `0.0.0.0/0` - Full tunnel (all traffic through VPN)
+- `10.9.0.0/24, 192.168.1.0/24` - Split tunnel (only home networks through VPN)
+
+## Part 4: Verify WireGuard is Running
+
+1. Go to **System → Diagnostics → Services**
+2. Verify **wireguard** service is listed and running (green status)
+3. Go to **VPN → WireGuard → Status**
+4. Verify interface is up and peer is listed
+
+If the service is not running:
+
+- Check the master "Enable WireGuard" checkbox at bottom of Instances page
+- Try restarting the service from System → Diagnostics → Services
+- Check **VPN → WireGuard → Logfile** for errors
+
+## Part 5: Assign WireGuard Interface
+
+**IMPORTANT:** The interface must be assigned before firewall rules can be created.
+
+1. Go to **Interfaces → Assignments**
+2. In the "New interface" dropdown, select **wg0** (or your instance name)
+3. Click **+** to add it
+4. Click on the newly added interface (e.g., OPT1)
+5. Configure the interface:
+   - **Enable interface:** Check
+   - **Description:** WireGuard (or preferred name)
+   - **IPv4 Configuration Type:** None (already configured in VPN settings)
+6. Click **Save**
+7. Click **Apply Changes**
+
+## Part 6: Configure Firewall Rules
+
+### Allow WireGuard Traffic on WAN
+
+This allows incoming VPN connections:
+
+1. Go to **Firewall → Rules → WAN**
+2. Click **+** to add a rule
+3. Configure:
+   - **Action:** Pass
+   - **Interface:** WAN
+   - **Protocol:** UDP
+   - **Destination:** This Firewall
+   - **Destination port:** 51820
+   - **Description:** Allow WireGuard
+4. Click **Save**
+5. Click **Apply Changes**
+
+### Allow Traffic from WireGuard Clients
+
+This allows VPN clients to access network resources:
+
+1. Go to **Firewall → Rules → WireGuard** (tab should now be visible)
+2. Click **+** to add a rule
+3. Configure:
+   - **Action:** Pass
+   - **Interface:** WireGuard
+   - **Direction:** in
+   - **TCP/IP Version:** IPv4
+   - **Protocol:** any
+   - **Source:** any (or specify 10.9.0.0/24 for WireGuard network only)
+   - **Destination:** any
+   - **Description:** Allow WireGuard client traffic
+4. Click **Save**
+5. Click **Apply Changes**
+
+## Part 7: Configure Outbound NAT
+
+**CRITICAL STEP:** Without this, VPN clients can only reach local networks, not the internet.
+
+1. Go to **Firewall → NAT → Outbound**
+2. Check current mode at the top
+3. If set to "Automatic outbound NAT rule generation":
+   - Change to **"Hybrid outbound NAT rule generation"**
+   - Click **Save** and **Apply Changes**
+4. Click **+** to add a manual outbound NAT rule
+5. Configure:
+   - **Interface:** WAN (your internet interface)
+   - **TCP/IP Version:** IPv4
+   - **Protocol:** any
+   - **Source:** Network, enter `10.9.0.0/24` (your WireGuard subnet)
+   - **Source Port:** any
+   - **Destination:** any
+   - **Destination Port:** any
+   - **Translation / target:** Interface address
+   - **Description:** WireGuard NAT
+6. Click **Save**
+7. Click **Apply Changes**
+
+## Part 8: Enable IP Forwarding (Verify)
+
+IP forwarding should already be enabled on OPNsense, but verify:
+
+1. Go to **System → Settings → Tunables**
+2. Look for `net.inet.ip.forwarding`
+3. Verify it's set to **1**
+4. If not present or set to 0, add/edit it:
+   - **Tunable:** `net.inet.ip.forwarding`
+   - **Value:** `1`
+   - **Description:** Enable IP forwarding
+
+## Part 9: Optional DNS Configuration
+
+If using OPNsense as DNS server for VPN clients:
+
+### Allow DNS Queries from WireGuard
+
+1. Go to **Firewall → Rules → WireGuard**
+2. Add a specific DNS rule (optional, covered by "any" rule above):
+   - **Action:** Pass
+   - **Protocol:** TCP/UDP
+   - **Source:** WireGuard net
+   - **Destination:** This Firewall
+   - **Destination port:** 53
+   - **Description:** Allow DNS queries
+
+### Configure Unbound for WireGuard
+
+1. Go to **Services → Unbound DNS → Access Lists**
+2. Add WireGuard network (10.9.0.0/24) to allowed networks
+3. Or go to **Services → Unbound DNS → General**
+4. Enable **DNS Query Forwarding**
+5. Add upstream DNS servers (1.1.1.1, 8.8.8.8, etc.)
+
+## Part 10: Testing and Verification
+
+### Connect from Client
+
+Import your client configuration and connect. Then test:
 
 ```bash
-sudo chmod 600 /etc/wireguard/wg-client.conf
-```
-
-This ensures only root can read the private key.
-
----
-
-## Testing and Verification
-
-### Start the VPN Connection
-
-```bash
-sudo wg-quick up wg-client
-```
-
-Expected output:
-
-```bash
-[#] ip link add wg-client type wireguard
-[#] wg setconf wg-client /dev/fd/63
-[#] ip -4 address add 10.9.0.2/32 dev wg-client
-[#] ip link set mtu 1420 up dev wg-client
-[#] resolvconf -a tun.wg-client -m 0 -x
-```
-
-### Verify Connection Status
-
-```bash
+# Check WireGuard status
 sudo wg show
-```
 
-Successful output shows:
+# Should see transfer data in both directions
+# received: should show data (not 0 B)
+# sent: should show data
 
-```bash
-interface: wg-client
-  public key: <your_public_key>
-  private key: (hidden)
-  listening port: <random_port>
-
-peer: <server_public_key>
-  endpoint: 97.187.113.124:51820
-  allowed ips: 0.0.0.0/0
-  latest handshake: X seconds ago        ← Key indicator!
-  transfer: XX KiB received, XX KiB sent
-  persistent keepalive: every 25 seconds
-```
-
-**Important**: "latest handshake" with recent timestamp means the VPN is working!
-
-### Test Connectivity
-
-```bash
-# Ping OPNsense WireGuard gateway
+# Test VPN gateway
 ping 10.9.0.1
 
-# Ping LAN gateway
+# Test local network (if applicable)
 ping 192.168.1.1
 
-# Check public IP (should show your home IP when using AllowedIPs 0.0.0.0/0)
-curl ifconfig.me
+# Test internet connectivity
+ping 8.8.8.8
 
 # Test DNS resolution
+ping google.com
 nslookup google.com
 ```
 
-### Test from External Network
+### Check OPNsense Status
 
-**Important**: When testing from your home network, you may experience routing issues. For proper testing:
+1. Go to **VPN → WireGuard → Status**
+2. Verify:
+   - Interface is up
+   - Peer is connected
+   - Transfer statistics show data in both directions
 
-- Connect from mobile hotspot
-- Connect from different location/network
-- This simulates real remote access usage
+### Troubleshooting
 
----
+**Connection established but can't ping gateway:**
 
-## Management and Troubleshooting
+- Verify WireGuard service is running (System → Diagnostics → Services)
+- Check firewall rules on WireGuard interface
+- Verify interface is assigned
 
-### Managing the Connection
+**Can ping gateway but not internet:**
 
-```bash
-# Start VPN
-sudo wg-quick up wg-client
+- Check Outbound NAT configuration
+- Verify NAT rule for WireGuard subnet exists
 
-# Stop VPN
-sudo wg-quick down wg-client
+**Slow DNS resolution:**
 
-# Restart VPN
-sudo wg-quick down wg-client && sudo wg-quick up wg-client
+- Use public DNS servers in client config (1.1.1.1, 8.8.8.8)
+- Or optimize Unbound DNS with fast upstream servers
 
-# Check status
-sudo wg show
+**No data received (0 B):**
 
-# Check interface status
-ip a show wg-client
+- Check firewall rules allow traffic
+- Verify Outbound NAT is configured
+- Check WireGuard logfile for errors
 
-# Check routing
-ip route
+## Security Considerations
+
+1. **Change default subnet:** Consider using a non-standard subnet instead of 10.9.0.0/24
+2. **Limit access:** Configure specific firewall rules instead of "any" to limit what VPN clients can access
+3. **Monitor connections:** Regularly check VPN → WireGuard → Status for unexpected peers
+4. **Rotate keys:** Periodically regenerate keys for enhanced security
+5. **Use strong endpoints:** Consider using a domain name with Dynamic DNS instead of raw IP
+
+## Network Topology
+
+```
+Internet
+    ↓
+WAN Interface (97.235.59.83:51820)
+    ↓
+OPNsense Firewall
+    ↓
+WireGuard Instance (10.9.0.1/24)
+    ↓
+VPN Clients (10.9.0.2, 10.9.0.3, etc.)
+    ↓
+Local Network (192.168.1.0/24) ← Optional access
 ```
 
-### Enable at Boot (Optional)
+## Common Configuration Scenarios
 
-Only enable if you want VPN to auto-connect at startup:
+### Scenario 1: Full Tunnel VPN (All Traffic Through VPN)
 
-```bash
-sudo systemctl enable wg-quick@wg-client
+```ini
+AllowedIPs = 0.0.0.0/0
+DNS = 1.1.1.1, 1.0.0.1
 ```
 
-To disable auto-start:
+### Scenario 2: Split Tunnel (Only Home Network Through VPN)
 
-```bash
-sudo systemctl disable wg-quick@wg-client
+```ini
+AllowedIPs = 10.9.0.0/24, 192.168.1.0/24
+# Don't set DNS, use local DNS
 ```
 
-### Common Issues and Solutions
+### Scenario 3: Privacy-Focused (All DNS Through VPN)
 
-#### No Handshake / "handshake: (never)"
-
-**Possible causes**:
-
-1. Client's public key not added to OPNsense peer
-2. Wrong server public key in client config (used peer key instead of instance key)
-3. WAN firewall rule not active
-4. WireGuard instance not enabled in OPNsense
-5. Port 51820 blocked by ISP or router
-
-**Solutions**:
-
-- Verify peer configuration in OPNsense
-- Check WAN firewall rule is enabled
-- Test port accessibility: `nc -vzu wg.tecronin.uk 51820`
-- Check OPNsense logs: **VPN → WireGuard → Log File**
-
-#### DNS Resolution Fails
-
-**Error**: `resolvconf: command not found`
-
-**Solution**:
-
-```bash
-sudo apt install resolvconf
-# or
-sudo apt install openresolv
+```ini
+AllowedIPs = 0.0.0.0/0
+DNS = 10.9.0.1
 ```
 
-#### No Internet Access When Connected
+## Summary Checklist
 
-**If testing from home network**: This is normal - routing loop occurs when on same network as VPN server.
-
-**If testing from remote network**:
-
-- Check outbound NAT in OPNsense
-- Verify WireGuard interface firewall rules
-- Check AllowedIPs setting in client config
-
-#### Connection Works But Can't Access LAN
-
-**Solutions**:
-
-- Verify WireGuard interface firewall rules in OPNsense
-- Check that AllowedIPs includes LAN subnet or 0.0.0.0/0
-- Verify outbound NAT configuration
-
-### Monitoring in OPNsense
-
-- **Connection Status**: VPN → WireGuard → Status
-- **Logs**: VPN → WireGuard → Log File
-- **Active Peers**: Shows connected clients and data transfer
-
----
-
-## Adding Additional Clients
-
-For each new device:
-
-1. Generate new keypair on the device
-2. Add new peer in OPNsense with unique IP:
-   - First client: `10.9.0.2/32`
-   - Second client: `10.9.0.3/32`
-   - Third client: `10.9.0.4/32`
-   - etc.
-3. Create config file with device's private key and server's public key
-
-### Mobile Devices (iOS/Android)
-
-1. Install WireGuard app from App Store/Play Store
-2. In OPNsense: Add peer as normal
-3. Click the **QR code icon** next to the peer
-4. Scan with WireGuard mobile app
-5. Instant configuration!
-
----
-
-## Configuration Reference
-
-### Network Details Used in This Guide
-
-| Component | Value |
-|-----------|-------|
-| VPN Subnet | 10.9.0.0/24 |
-| Server IP | 10.9.0.1/24 |
-| Client IP | 10.9.0.2/32 |
-| WireGuard Port | 51820 (UDP) |
-| Endpoint | wg.tecronin.uk:51820 |
-| LAN Subnet | 192.168.1.0/24 |
-
-### Key Concepts
-
-- **Instance**: The WireGuard server configuration on OPNsense
-- **Peer**: Each client connecting to the server
-- **Public/Private Keys**: Cryptographic keypairs for authentication
-- **Pre-shared Key**: Optional additional security layer
-- **AllowedIPs**: Determines what traffic routes through VPN
-- **Endpoint**: How clients find and connect to the server
-- **PersistentKeepalive**: Maintains connection through NAT/firewalls
-
----
-
-## Security Best Practices
-
-1. **Never share private keys** - Each device should have its own keypair
-2. **Use pre-shared keys** - Adds post-quantum security
-3. **Use DNS-only Cloudflare records** - Don't proxy WireGuard through Cloudflare
-4. **Set proper file permissions** - Config files should be 600 (readable only by root)
-5. **Use strong firewall rules** - Only allow necessary traffic
-6. **Keep software updated** - Regularly update OPNsense and WireGuard
-7. **Monitor logs** - Check for unauthorized connection attempts
-8. **Use unique IPs per client** - Makes tracking and management easier
-
----
-
-## Comparison: WireGuard vs OpenVPN
-
-| Feature | WireGuard | OpenVPN |
-|---------|-----------|---------|
-| Setup Complexity | Simple | Complex |
-| Performance | Faster | Slower |
-| Code Size | ~4,000 lines | ~100,000 lines |
-| Configuration | Minimal settings | Many options |
-| Cryptography | Modern, fixed | Configurable ciphers |
-| Mobile Handoff | Excellent | Poor |
-| Certificate Management | Key pairs only | PKI/certificates |
-| Firewall Rules | Simple UDP | More complex |
-
----
+- [ ] WireGuard plugin installed
+- [ ] Instance created with tunnel address and port
+- [ ] **Master "Enable WireGuard" checkbox enabled**
+- [ ] Client peer configured with allowed IPs
+- [ ] WireGuard service running
+- [ ] Interface assigned in OPNsense
+- [ ] WAN firewall rule allows UDP 51820
+- [ ] WireGuard interface firewall rules allow traffic
+- [ ] **Outbound NAT configured for WireGuard subnet**
+- [ ] IP forwarding enabled
+- [ ] DNS configured (public or OPNsense)
+- [ ] Client configuration created with proper DNS
+- [ ] Connection tested (ping gateway, internet, DNS)
 
 ## Additional Resources
 
-- **OPNsense Documentation**: <https://docs.opnsense.org/>
-- **WireGuard Official Site**: <https://www.wireguard.com/>
-- **OPNsense Support**: <https://support.opnsense.org/>
-- **Anthropic Prompting Guide**: <https://docs.claude.com/>
+- OPNsense WireGuard Documentation: <https://docs.opnsense.org/manual/how-tos/wireguard-client.html>
+- WireGuard Official Site: <https://www.wireguard.com/>
+- OPNsense Forums: <https://forum.opnsense.org/>
 
 ---
 
-## Document History
-
-- **Created**: October 4, 2025
-- **Configuration**: OPNsense with WireGuard to Linux client
-- **Tested**: Debian-based Linux distribution
-- **Status**: Production-ready configuration
-
----
-
-*This guide documents a working WireGuard VPN configuration successfully deployed and tested with road warrior access from external networks.*
+*Last Updated: October 2025*
+*Tested on: OPNsense 25.7.6-amd64, FreeBSD 14.3-RELEASE-p4*
