@@ -1,5 +1,8 @@
 alias cls='printf "\033c"'
 alias vmup='virsh start desktop-vm'
 alias vmdown='virsh shutdown desktop-vm'
+alias vmkill='virsh destroy --graceful desktop-vm'
+alias vmrm='virsh undefine desktop-vm'
 alias vmedit='virsh edit desktop-vm'
 alias vmconsole='virsh console desktop-vm'
+alias raidls='sudo mdadm -D /dev/md0'
