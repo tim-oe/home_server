@@ -1,9 +1,10 @@
 # https://hub.docker.com/r/jacobalberty/unifi
 # https://github.com/jacobalberty/unifi-docker/blob/master/docker-compose.yml
+# https://ui.com/download/releases/network-server
 ---
 services:
   unifi:
-    image: jacobalberty/unifi:v9.1.120
+    image: jacobalberty/unifi:v9.3.45
     container_name: "unifi"
     hostname: unifi.localdomain
     restart: "unless-stopped"

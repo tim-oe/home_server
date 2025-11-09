@@ -16,6 +16,14 @@ tasks.register('deployGrafana', GradleBuild) {
     tasks = ['deployService']
 }
 
+tasks.register('deployHomepage', GradleBuild) {
+    description = 'deploy homepage scripts'
+    group = "deploy stuff"
+    buildName = 'homepage'
+    startParameter.projectProperties = ['svc':'homepage']
+    tasks = ['deployService']
+}
+
 tasks.register('deployJenkins', GradleBuild) {
     description = 'deploy jenkins scripts'
     group = "deploy stuff"
@@ -46,7 +54,6 @@ tasks.register('deployNginx', GradleBuild) {
             }
         }
     }
-
 }
 
 tasks.register('deployOpenhab', GradleBuild) {
@@ -112,9 +119,9 @@ tasks.register('deployWeather', GradleBuild) {
 tasks.register('deployAll') {
     description = 'deploy all scripts scripts'
     group = "deploy stuff"
-    dependsOn = ['deployVault',
+    dependsOn = ['deployGrafana',
+        'deployHomepage',
         'deployJenkins',
-        'deployGrafana',
         'deployNginx',
         'deployNexus',
         'deployOpenhab',
