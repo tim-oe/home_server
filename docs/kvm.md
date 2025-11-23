@@ -20,7 +20,9 @@
     - build cidata iso
     - ```sudo genisoimage -output cidata.iso -volid cidata -rational-rock -joliet -joliet-long user-data.yml meta-data.yml```
 - example command line
-    - ``` sudo virt-install \
+    - 
+    ```bash 
+    sudo virt-install \
   --noautoconsole \
   --name desktop-24-vm \
   --ram 8192 \
