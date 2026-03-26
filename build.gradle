@@ -35,6 +35,10 @@ spotless {
     }
 }
 
+// If you get "reject HostKey: tec-desktop", run: ./gradlew resetHost
+// If that doesn't help (e.g. JSch rejects key type), uncomment below (less secure):
+// ssh.settings { knownHosts = allowAnyHosts }
+
 remotes {
     desktop {
         host = 'tec-desktop'

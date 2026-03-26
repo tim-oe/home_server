@@ -24,16 +24,37 @@
     ```bash 
     sudo virt-install \
   --noautoconsole \
-  --name desktop-24-vm \
+  --name <vm name> \
   --ram 8192 \
   --vcpus 2 \
-  --disk path=/mnt/raid/libvirt/images/desktop-24-vm.qcow2,size=32,format=qcow2,bus=virtio \
+  --disk path=path_to_disk.qcow2,size=32,format=qcow2,bus=virtio \
   --os-variant ubuntu-lts-latest \
   --network bridge=kvmbr0 \
   --console pty,target_type=serial \
-  --location /mnt/raid/ubuntu-24-vm.iso,kernel=casper/vmlinuz,initrd=casper/initrd \
-  --disk path=/mnt/raid/cidata.iso,device=cdrom \
+  --location path_to_instal.iso,kernel=casper/vmlinuz,initrd=casper/initrd \
+  --disk path_to_cidata.iso,device=cdrom \
   --extra-args 'autoinstall console=ttyS0,115200n8 serial'```
+
+- import existing vm
+```bash
+sudo virt-install \
+--noautoconsole \
+--import \
+--name <vm name> \
+--memory 8192 \
+--disk path_to_disk.qcow2 \
+--network bridge=kvmbr0 \
+--vcpus 2 \
+--console pty,target_type=serial \
+--os-variant ubuntu-lts-latest```
+
+- compact disk
+  - from vm shell (disk driver needs discard='unmap')
+  - sudo fstrim -av 
+  - shutdown vm
+  - compress 
+  - sudo qemu-img convert -O qcow2 -c path_to_src.qcow2 path_to_target.qcow2
+  - restart vm
 
 ## FAQ
 - remmina connection failures

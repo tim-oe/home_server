@@ -57,6 +57,14 @@ tasks.register('deployOpenhab', GradleBuild) {
     tasks = ['deployService']
 }
 
+tasks.register('deployRedis', GradleBuild) {
+    description = 'deploy redis scripts'
+    group = "deploy stuff"
+    buildName = 'redis'
+    startParameter.projectProperties = ['svc':'redis']
+    tasks = ['deployService']
+}
+
 tasks.register('deployPortainer', GradleBuild) {
     description = 'deploy portainer scripts'
     group = "deploy stuff"
@@ -105,6 +113,14 @@ tasks.register('deployWeather', GradleBuild) {
     tasks = ['deployService']
 }
 
+tasks.register('deployWiki', GradleBuild) {
+    description = 'deploy wiki scripts'
+    group = "deploy stuff"
+    buildName = 'wiki'
+    startParameter.projectProperties = ['svc':'wiki']
+    tasks = ['deployService']
+}
+
 /** 
  * can't nest GradleBuild tasks so use dependsOn to group
  * to call multiple GradleBuild tasks each thas has to have a unique buildName
@@ -119,10 +135,12 @@ tasks.register('deployAll') {
         'deployNexus',
         'deployOpenhab',
         'deployPortainer',
+        'deployRedis',
         'deploySonarqube', 
         'deployUnifi',
         'deployUpsMon',
         'deployVault',
-        'deployWeather'
+        'deployWeather',
+        'deployWiki'
         ]
 }
