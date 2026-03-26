@@ -1,0 +1,89 @@
+# https://github.com/linuxserver/docker-bookstack
+# https://www.bookstackapp.com/docs/admin/email-webhooks/
+# php shell for debugging
+# docker exec -it bookstack php /app/www/artisan tinker
+# dump mail config dd(config('mail'));
+services:
+  # ─── MariaDB (required by BookStack — does not support PostgreSQL) ────────────
+  mariadb:
+    image: lscr.io/linuxserver/mariadb:latest
+    container_name: bookstack_db
+    restart: unless-stopped
+    environment:
+      PUID: 1000
+      PGID: 1000
+      TZ: Europe/London                        # <-- set your timezone
+      MYSQL_ROOT_PASSWORD: changeme_root       # <-- change this
+      MYSQL_DATABASE: bookstack
+      MYSQL_USER: bookstack
+      MYSQL_PASSWORD: bookstack@123              # <-- change this
+    volumes:
+      - mariadb_data:/config
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "bookstack", "-pchangeme_db"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ─── BookStack ────────────────────────────────────────────────────────────────
+  bookstack:
+    image: lscr.io/linuxserver/bookstack:latest
+    container_name: bookstack
+    restart: unless-stopped
+    depends_on:
+      mariadb:
+        condition: service_healthy
+    ports:
+      - "6875:80"       # Web UI → http://your-host:6875
+    environment:
+      PUID: 1000
+      PGID: 1000
+      TZ: America/Chicago                        # <-- set your timezone
+      APP_URL: https://wiki.tecronin.uk        # <-- your public URL (important for nginx)
+      APP_KEY: ${BOOKSTACK_APP_KEY}                                # <-- leave blank on first run, BookStack generates it
+      DB_HOST: mariadb
+      DB_PORT: 3306
+      DB_USERNAME: bookstack
+      DB_PASSWORD: bookstack@123                 # <-- must match MYSQL_PASSWORD above
+      DB_DATABASE: bookstack
+      QUEUE_CONNECTION: database
+      ALLOWED_ATTACHMENT_TYPES: "zip,json,xml,txt,pdf,doc,docx,xls,xlsx,ppt,pptx,csv,md,mp4,mov,avi,mkv"
+      # mail settings
+      MAIL_DRIVER: smtp
+      MAIL_HOST: ${SMTP_HOST}
+      MAIL_PORT: ${SMTP_PORT}
+      MAIL_ENCRYPTION: tls
+      MAIL_USERNAME: ${SMTP_USERNAME}
+      MAIL_PASSWORD: ${SMTP_PASSWORD}
+      MAIL_FROM: ${SMTP_FROM}
+      MAIL_FROM_NAME: "S&T Wiki"  
+    volumes:
+      - bookstack_config:/config
+      - ./custom-php.ini:/etc/php85/conf.d/custom.ini
+    labels:
+      - "bookstack.backup=true"
+
+  # ─── Volume Backup ───────────────────────────────────────────────────────────
+  backup:
+    image: offen/docker-volume-backup:v2
+    container_name: bookstack_backup
+    restart: unless-stopped
+    environment:
+      BACKUP_CRON_EXPRESSION: "0 2 * * *"
+      BACKUP_FILENAME: "bookstack-backup-%Y-%m-%dT%H-%M-%S.tar.gz"
+      BACKUP_RETENTION_DAYS: "7"
+      BACKUP_STOP_CONTAINER_LABEL: "bookstack.backup=true"
+    volumes:
+      - mariadb_data:/backup/mariadb_data:ro
+      - bookstack_config:/backup/bookstack_config:ro
+      - /path/to/your/backups:/archive          # <-- change to your backup path
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+
+volumes:
+  mariadb_data:
+  bookstack_config:
+
+networks:
+  default:
+    external: true
+    name: share-net
