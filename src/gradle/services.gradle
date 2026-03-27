@@ -57,6 +57,14 @@ tasks.register('deployOpenhab', GradleBuild) {
     tasks = ['deployService']
 }
 
+tasks.register('deployRabbitmq', GradleBuild) {
+    description = 'deploy rabbitmq scripts'
+    group = "deploy stuff"
+    buildName = 'rabbitmq'
+    startParameter.projectProperties = ['svc':'rabbitmq']
+    tasks = ['deployService']
+}
+
 tasks.register('deployRedis', GradleBuild) {
     description = 'deploy redis scripts'
     group = "deploy stuff"
@@ -135,6 +143,7 @@ tasks.register('deployAll') {
         'deployNexus',
         'deployOpenhab',
         'deployPortainer',
+        'deployRabbitmq',
         'deployRedis',
         'deploySonarqube', 
         'deployUnifi',
