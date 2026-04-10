@@ -3,7 +3,7 @@
 ---
 services:
   jenkins:
-    image: "jenkins/jenkins:lts-jdk17"
+    image: "jenkins/jenkins:lts"
     container_name: "jenkins"
     hostname: "jenkins"
     restart: "unless-stopped"
