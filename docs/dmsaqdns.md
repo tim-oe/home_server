@@ -57,10 +57,12 @@ Add one row per option. All rows use the same interface.
 | LAN | Set | `3` | `192.168.1.1` | unchecked |
 | LAN | Set | `6` | `192.168.1.1` | checked |
 | LAN | Set | `15` | `home.lan` | unchecked |
+| LAN | Set | `42` | `192.168.1.1` | checked |
 
 - Option `3` — default gateway
 - Option `6` — DNS server (points clients at Unbound, not Dnsmasq directly). Force checked to override any client-supplied DNS.
 - Option `15` — domain name suffix
+- Option `42` — ntp server
 
 Leave **Option6**, **Tag**, and **Description** fields blank for a standard home setup.
 
