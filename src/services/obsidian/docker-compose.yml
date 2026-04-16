@@ -1,0 +1,29 @@
+# https://github.com/sytone/obsidian-remote
+# https://hub.docker.com/r/sytone/obsidian-remote
+---
+services:
+  obsidian:
+    image: ghcr.io/sytone/obsidian-remote:latest
+    container_name: obsidian
+    hostname: obsidian
+    networks:
+      - default
+    restart: unless-stopped
+    ports:
+      - 8954:8080
+    volumes:
+      - ./vaults:/vaults:rw
+      - /mnt/brain:/brain:rw
+      - obsidian-config:/config:rw
+      # sync local TZ and time
+      - /etc/timezone:/etc/timezone:ro
+      - /etc/localtime:/etc/localtime:ro
+    environment:
+      - TZ=Europe/London
+volumes:
+  obsidian-config:
+    name: obsidian-config
+networks:
+  default:
+    external: true
+    name: share-net

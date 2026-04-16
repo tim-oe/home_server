@@ -19,6 +19,7 @@ home lab cloud like setup for development and learning
 - [home automation openhab (wip)](https://www.openhab.org/)
 - [vaultwarden](https://github.com/dani-garcia/vaultwarden)
 - [portainer](https://www.howtogeek.com/devops/)
+- [obsidian-remote](https://github.com/sytone/obsidian-remote)
 
 ## two level backup
 - local backup to nas via docker-volume-backup
