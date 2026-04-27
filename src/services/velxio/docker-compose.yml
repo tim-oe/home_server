@@ -1,0 +1,30 @@
+services:
+  velxio:
+    image: ghcr.io/davidmonterocrespo24/velxio:master
+    container_name: velxio
+    hostname: velxio
+    restart: unless-stopped
+    ports:
+      - "3080:80"
+    volumes:
+      - velxio-data:/app/data
+      - /etc/timezone:/etc/timezone:ro
+      - /etc/localtime:/etc/localtime:ro
+    environment:
+      - SECRET_KEY=${VELXIO_SECRET_KEY}
+      - FRONTEND_URL=https://velxio.tecronin.uk
+      - COOKIE_SECURE=true
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+
+volumes:
+  velxio-data:
+    name: velxio-data
+
+networks:
+  default:
+    external: true
+    name: share-net
