@@ -3,9 +3,11 @@ services:
     image: rabbitmq:3-management-alpine
     container_name: rabbitmq
     restart: unless-stopped
+    command: sh -c "rabbitmq-plugins enable rabbitmq_mqtt && rabbitmq-server"
     ports:
       - "5672:5672"
       - "15672:15672"
+      - "1883:1883"
     environment:
       RABBITMQ_DEFAULT_USER: ${RABBITMQ_USERNAME}
       RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASSWORD}
