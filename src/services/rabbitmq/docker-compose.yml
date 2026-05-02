@@ -2,6 +2,8 @@ services:
   rabbitmq:
     image: rabbitmq:3-management-alpine
     container_name: rabbitmq
+    # hostname needed or it rebuilds data every restart
+    hostname: "rabbitmq"
     restart: unless-stopped
     command: sh -c "rabbitmq-plugins enable rabbitmq_mqtt && rabbitmq-server"
     ports:
@@ -11,8 +13,12 @@ services:
     environment:
       RABBITMQ_DEFAULT_USER: ${RABBITMQ_USERNAME}
       RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASSWORD}
+      
     volumes:
       - rabbitmq_data:/var/lib/rabbitmq
+      - ./.sbin:/root/bin
+      - ./mqtt.conf:/etc/rabbitmq/conf.d/20-mqtt.conf:ro
+    
     healthcheck:
       test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
       interval: 10s
@@ -21,6 +27,7 @@ services:
 
 volumes:
   rabbitmq_data:
+    name: rabbitmq_data
 
 networks:
   default:
