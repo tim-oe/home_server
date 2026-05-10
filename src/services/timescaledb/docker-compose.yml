@@ -1,0 +1,35 @@
+# https://hub.docker.com/r/timescale/timescaledb
+---
+services:
+  timescaledb:
+    image: timescale/timescaledb:2.18.0-pg17
+    container_name: timescaledb
+    hostname: timescaledb
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${TIMESCALEDB_USERNAME}
+      POSTGRES_PASSWORD: ${TIMESCALEDB_PASSWORD}
+      POSTGRES_DB: weather
+    ports:
+      - target: 5432
+        published: 5432
+        protocol: tcp
+        mode: host
+    volumes:
+      - timescaledb-data:/var/lib/postgresql/data
+      - /etc/timezone:/etc/timezone:ro
+      - /etc/localtime:/etc/localtime:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+
+volumes:
+  timescaledb-data:
+    name: timescaledb-data
+
+networks:
+  default:
+    external: true
+    name: share-net

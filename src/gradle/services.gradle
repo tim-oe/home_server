@@ -145,6 +145,14 @@ tasks.register('deployVelxio', GradleBuild) {
     tasks = ['deployService']
 }
 
+tasks.register('deployTimescaledb', GradleBuild) {
+    description = 'deploy timescaledb scripts'
+    group = "deploy stuff"
+    buildName = 'timescaledb'
+    startParameter.projectProperties = ['svc':'timescaledb']
+    tasks = ['deployService']
+}
+
 /** 
  * can't nest GradleBuild tasks so use dependsOn to group
  * to call multiple GradleBuild tasks each thas has to have a unique buildName
@@ -168,6 +176,7 @@ tasks.register('deployAll') {
         'deployWeather',
         'deployWiki',
         'deployObsidian',
-        'deployVelxio'
+        'deployVelxio',
+        'deployTimescaledb'
         ]
 }
