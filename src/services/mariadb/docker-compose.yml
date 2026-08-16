@@ -1,0 +1,64 @@
+# https://hub.docker.com/_/mariadb
+---
+services:
+  mariadb:
+    image: mariadb:11.4
+    container_name: mariadb
+    hostname: mariadb
+    restart: unless-stopped
+    environment:
+      MARIADB_ROOT_PASSWORD: ${MARIADB_ROOT_PASSWORD}
+      MARIADB_DATABASE: ${MARIADB_DATABASE}
+      MARIADB_USER: ${MARIADB_USERNAME}
+      MARIADB_PASSWORD: ${MARIADB_PASSWORD}
+      MARIADB_AUTO_UPGRADE: "1"
+    ports:
+      - target: 3306
+        published: 3306
+        protocol: tcp
+        mode: host
+    volumes:
+      - mariadb-data:/var/lib/mysql
+      - mariadb-dumps:/dumps
+      - ./dump.sh:/usr/local/bin/dump.sh:ro
+      - /etc/timezone:/etc/timezone:ro
+      - /etc/localtime:/etc/localtime:ro
+    labels:
+      # mariadb-backup reads these via docker.sock and runs dump.sh before archiving
+      - docker-volume-backup.exec-label=mariadb
+      - docker-volume-backup.archive-pre=/bin/sh /usr/local/bin/dump.sh
+    healthcheck:
+      test: ["CMD", "healthcheck.sh", "--connect", "--innodb_initialized"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+  backup:
+    # https://github.com/offen/docker-volume-backup/
+    image: offen/docker-volume-backup:latest
+    container_name: mariadb-backup
+    restart: always
+    environment:
+      # match mariadb's docker-volume-backup.exec-label; runs that container's archive-pre (dump.sh)
+      EXEC_LABEL: mariadb
+      BACKUP_CRON_EXPRESSION: "25 01 * * *"
+      BACKUP_FILENAME: backup-%Y-%m-%dT%H-%M-%S.tar.gz
+      BACKUP_PRUNING_PREFIX: backup-
+      BACKUP_RETENTION_DAYS: 7
+    volumes:
+      - /etc/timezone:/etc/timezone:ro
+      - /etc/localtime:/etc/localtime:ro
+      - mariadb-dumps:/backup:ro
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - /mnt/backup/docker/mariadb:/archive
+
+volumes:
+  mariadb-data:
+    name: mariadb-data
+  mariadb-dumps:
+    name: mariadb-dumps
+
+networks:
+  default:
+    external: true
+    name: share-net
