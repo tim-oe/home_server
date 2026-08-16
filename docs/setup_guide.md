@@ -71,8 +71,8 @@
 
 3. **Network Services**
    - NGINX reverse proxy
-   - Unifi Controller
-   Refer to `src/services/network/` for specific configurations
+   - UniFi OS Server
+   Refer to `src/services/unifi-os/` for specific configurations
 
 ### Backup Configuration
 

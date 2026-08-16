@@ -5,7 +5,7 @@
 ### Jenkins
 - **Purpose**: Continuous Integration/Continuous Deployment server
 - **Configuration Location**: `src/services/build/jenkins/`
-- **Default Port**: 8080
+- **Default Port**: 8088 (container still listens on 8080; nginx proxies over share-net)
 - **Configuration Steps**:
   1. Initial setup using configuration as code
   2. Plugin installation and configuration
@@ -65,10 +65,10 @@
 
 ## Network Management
 
-### Unifi Controller
+### UniFi OS Server
 - **Purpose**: Wireless Access Point management
-- **Configuration Location**: `src/services/network/unifi/`
-- **Default Port**: 8443
+- **Configuration Location**: `src/services/unifi-os/`
+- **Default Port**: 11443 (GUI; device inform is 8080)
 - **Configuration Steps**:
   1. Initial setup wizard
   2. Device adoption
@@ -208,12 +208,12 @@ graph TD
 
 | Service | Port | Protocol | Purpose |
 |---------|------|----------|----------|
-| Jenkins | 8080 | HTTP | Web Interface |
+| Jenkins | 8088 | HTTP | Web Interface (host publish; container 8080) |
 | Nexus | 8081 | HTTP | Repository Manager |
 | SonarQube | 9000 | HTTP | Code Analysis |
 | Grafana | 3000 | HTTP | Monitoring UI |
 | InfluxDB | 8086 | HTTP | Time Series DB |
-| Unifi | 8443 | HTTPS | Controller UI |
+| UniFi OS Server | 11443 | HTTPS | Controller UI |
 | NGINX | 80/443 | HTTP/HTTPS | Reverse Proxy |
 | Vaultwarden | 8000 | HTTP | Password Manager |
 | Portainer | 9000 | HTTP | Container Management |

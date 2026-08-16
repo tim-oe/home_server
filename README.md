@@ -10,8 +10,8 @@ home lab cloud like setup for development and learning
     - [grafana](https://grafana.com/)
     - [influxdb](https://www.influxdata.com/)
     - [telgraf](https://www.influxdata.com/time-series-platform/telegraf/)
-- [unifi WAP controller](https://github.com/jacobalberty/unifi-docker)
-    - [unifi wap](https://community.ui.com/releases/UniFi-Network-Application-8-6-9/e4bd3f71-a2c4-4c98-b12a-a8b0b1c2178e)
+- [unifi OS Server](https://github.com/lemker/unifi-os-server)
+    - [self-hosting UniFi](https://help.ui.com/hc/en-us/articles/34210126298775-Self-Hosting-UniFi)
 - reverse proxy
     - [nginx](https://nginx.org/en/)
     - [ssl via certbot](https://certbot-dns-cloudflare.readthedocs.io/en/stable/)

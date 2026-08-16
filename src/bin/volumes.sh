@@ -30,4 +30,12 @@ docker volume create --name "postgresql-data" --label "com.docker.compose.projec
 docker volume create --name "unifi" --label "com.docker.compose.project=unifi" --label "com.docker.compose.version=2.35.1" --label "com.docker.compose.volume=unifi"
 docker volume create --name "unifi-run" --label "com.docker.compose.project=unifi" --label "com.docker.compose.version=2.35.1" --label "com.docker.compose.volume=unifi-run"
 
+docker volume create --name "unifi-os-persistent" --label "com.docker.compose.project=unifi-os" --label "com.docker.compose.version=2.35.1" --label "com.docker.compose.volume=unifi-os-persistent"
+docker volume create --name "unifi-os-data" --label "com.docker.compose.project=unifi-os" --label "com.docker.compose.version=2.35.1" --label "com.docker.compose.volume=unifi-os-data"
+docker volume create --name "unifi-os-srv" --label "com.docker.compose.project=unifi-os" --label "com.docker.compose.version=2.35.1" --label "com.docker.compose.volume=unifi-os-srv"
+docker volume create --name "unifi-os-var-log" --label "com.docker.compose.project=unifi-os" --label "com.docker.compose.version=2.35.1" --label "com.docker.compose.volume=unifi-os-var-log"
+docker volume create --name "unifi-os-unifi" --label "com.docker.compose.project=unifi-os" --label "com.docker.compose.version=2.35.1" --label "com.docker.compose.volume=unifi-os-unifi"
+docker volume create --name "unifi-os-mongodb" --label "com.docker.compose.project=unifi-os" --label "com.docker.compose.version=2.35.1" --label "com.docker.compose.volume=unifi-os-mongodb"
+docker volume create --name "unifi-os-rabbitmq-ssl" --label "com.docker.compose.project=unifi-os" --label "com.docker.compose.version=2.35.1" --label "com.docker.compose.volume=unifi-os-rabbitmq-ssl"
+
 docker volume create --name "vaultwarden-storage" --label "com.docker.compose.project=vaultwarden" --label "com.docker.compose.version=2.35.1" --label "com.docker.compose.volume=vaultwarden-storage"

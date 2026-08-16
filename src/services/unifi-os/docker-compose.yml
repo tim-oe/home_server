@@ -1,0 +1,100 @@
+# https://github.com/lemker/unifi-os-server
+# https://github.com/lemker/unifi-os-server/blob/main/docker-compose.yaml
+# replaces the EOL jacobalberty/unifi image, see ../unifi/
+---
+services:
+  unifi-os-server:
+    image: ghcr.io/lemker/unifi-os-server:v1.4.0
+    container_name: unifi-os-server
+    hostname: unifi.localdomain
+    restart: unless-stopped
+    # systemd services (unifi-core) time out without this; cgroup: host alone is not enough
+    privileged: true
+    # every UniFi OS component runs as a systemd service, which needs the host cgroup
+    cgroup: host
+    cap_add:
+      - NET_RAW
+      - NET_ADMIN
+    extra_hosts:
+      host.docker.internal: host-gateway
+    tmpfs:
+      - /run:exec
+      - /run/lock
+      - /tmp:exec
+      - /var/lib/journal
+      - /var/opt/unifi/tmp:size=64m
+    environment:
+      # inform address handed to adopted devices, must be reachable from the 192.168.1.0/24 LAN
+      - UOS_SYSTEM_IP=${UOS_SYSTEM_IP}
+      - TZ=America/Chicago
+    volumes:
+      - /sys/fs/cgroup:/sys/fs/cgroup:rw
+      - unifi-os-persistent:/persistent
+      - unifi-os-data:/data
+      - unifi-os-srv:/srv
+      - unifi-os-var-log:/var/log
+      - unifi-os-unifi:/var/lib/unifi
+      - unifi-os-mongodb:/var/lib/mongodb
+      - unifi-os-rabbitmq-ssl:/etc/rabbitmq/ssl
+      # parent dir already exists in the image (cap.conf, memory.conf)
+      - ./unifi-core-timeout.conf:/lib/systemd/system/unifi-core.service.d/timeout.conf:ro
+      - ./unifi-core-wait-postgres:/usr/local/bin/unifi-core-wait-postgres:ro
+      # force local TZ to avoid chron math
+      - /etc/timezone:/etc/timezone:ro
+      - /etc/localtime:/etc/localtime:ro
+    ports:
+      - "11443:443/tcp"
+      - "8080:8080/tcp"
+      - "3478:3478/udp"
+      - "10003:10003/udp"
+      # transitional: APs still inform on the old controller's 8882, remove once they move to 8080
+      #- "8882:8080/tcp"
+    networks:
+      default:
+        aliases:
+          # nginx unifi.conf proxies to this name
+          - unifi.localdomain
+    labels:
+      # for offen backup, mongodb cannot be safely hot copied
+      - docker-volume-backup.stop-during-backup=true
+  backup:
+    # https://github.com/offen/docker-volume-backup/
+    image: offen/docker-volume-backup:latest
+    container_name: unifi-os-backup
+    restart: always
+    environment:
+      BACKUP_CRON_EXPRESSION: "15 01 * * *"
+      BACKUP_FILENAME: backup-%Y-%m-%dT%H-%M-%S.tar.gz
+      BACKUP_PRUNING_PREFIX: backup-
+      BACKUP_RETENTION_DAYS: 7
+    volumes:
+      # force local TZ to avoid chron math
+      - /etc/timezone:/etc/timezone:ro
+      - /etc/localtime:/etc/localtime:ro
+      - unifi-os-persistent:/backup/persistent:ro
+      - unifi-os-data:/backup/data:ro
+      - unifi-os-srv:/backup/srv:ro
+      - unifi-os-unifi:/backup/var-lib-unifi:ro
+      - unifi-os-mongodb:/backup/var-lib-mongodb:ro
+      - unifi-os-rabbitmq-ssl:/backup/rabbitmq-ssl:ro
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - /mnt/backup/docker/unifi-os:/archive
+volumes:
+  unifi-os-persistent:
+    name: unifi-os-persistent
+  unifi-os-data:
+    name: unifi-os-data
+  unifi-os-srv:
+    name: unifi-os-srv
+  unifi-os-var-log:
+    name: unifi-os-var-log
+  unifi-os-unifi:
+    name: unifi-os-unifi
+  unifi-os-mongodb:
+    name: unifi-os-mongodb
+  unifi-os-rabbitmq-ssl:
+    name: unifi-os-rabbitmq-ssl
+networks:
+  default:
+    external: true
+    name: "share-net"

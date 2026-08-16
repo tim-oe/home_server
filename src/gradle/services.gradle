@@ -2,6 +2,9 @@ tasks.register('deployService') {
     doLast {
         ssh.run {
             session(remotes.desktop) {
+                executeSudo "mkdir -p /mnt/raid/services/${project.svc}"
+                executeSudo "chown ansible:ansible /mnt/raid/services/${project.svc}"
+                executeSudo "setfacl -m g:ansible:rwx /mnt/raid/services/${project.svc}"
                 put from: "${project.rootDir}/src/services/${project.svc}", into: '/mnt/raid/services'
             }
         }
@@ -97,6 +100,23 @@ tasks.register('deployUnifi', GradleBuild) {
     tasks = ['deployService']
 }
 
+tasks.register('deployUnifiOs', GradleBuild) {
+    description = 'deploy unifi-os-server scripts and create host dirs'
+    group = "deploy stuff"
+    buildName = 'unifi-os'
+    startParameter.projectProperties = ['svc':'unifi-os']
+    tasks = ['deployService']
+    doFirst {
+        ssh.run {
+            session(remotes.desktop) {
+                executeSudo 'mkdir -p /mnt/raid/services/unifi-os /mnt/backup/docker/unifi-os'
+                executeSudo 'chown ansible:ansible /mnt/raid/services/unifi-os'
+                executeSudo 'setfacl -m g:ansible:rwx /mnt/raid/services/unifi-os'
+            }
+        }
+    }
+}
+
 tasks.register('deployUpsMon', GradleBuild) {
     description = 'deploy ups scripts'
     group = "deploy stuff"
@@ -179,8 +199,8 @@ tasks.register('deployAll') {
         'deployRedis',
         'deploySonarqube', 
         'deployUnifi',
+        'deployUnifiOs',
         'deployUpsMon',
-        'deployVault',
         'deployWeather',
         'deployWiki',
         'deployObsidian',

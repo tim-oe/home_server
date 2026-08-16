@@ -1,0 +1,20 @@
+#!/bin/bash
+# postgresql.service in this image is a no-op (ExecStart=/bin/true).
+# The real cluster is postgresql@14-main; unifi-core pre-start races it
+# and sticks in start-pre until a later manual restart.
+set -u
+
+timeout_s="${UNIFI_CORE_PG_WAIT_TIMEOUT:-180}"
+deadline=$((SECONDS + timeout_s))
+
+echo "waiting for postgresql to accept connections (timeout ${timeout_s}s)"
+while (( SECONDS < deadline )); do
+    if pg_isready -q -p 5432 || pg_isready -q -h /var/run/postgresql -p 5432; then
+        echo "postgresql is accepting connections"
+        exit 0
+    fi
+    sleep 2
+done
+
+echo "postgresql did not become ready in ${timeout_s}s" >&2
+exit 1

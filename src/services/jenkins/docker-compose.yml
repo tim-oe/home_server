@@ -13,7 +13,8 @@ services:
       - "JENKINS_OPTS=--httpPort=8080"
     ports:
       - target: 8080
-        published: 8080
+        # host 8080 reserved for UniFi OS Server inform; nginx still uses share-net :8080
+        published: 8088
         protocol: tcp
         mode: host    
       - target: 50000

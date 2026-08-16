@@ -17,7 +17,7 @@ This project implements a comprehensive home lab cloud-like setup for developmen
    - Telegraf: Server agent for collecting metrics
 
 3. **Network Management**
-   - Unifi WAP Controller: Wireless Access Point management
+   - UniFi OS Server: Wireless Access Point management
    - NGINX: Reverse proxy server
    - Certbot: SSL certificate automation with Cloudflare DNS
 
