@@ -4,7 +4,7 @@
 # and sticks in start-pre until a later manual restart.
 set -u
 
-timeout_s="${UNIFI_CORE_PG_WAIT_TIMEOUT:-180}"
+timeout_s="${UNIFI_CORE_PG_WAIT_TIMEOUT:-900}"
 deadline=$((SECONDS + timeout_s))
 
 echo "waiting for postgresql to accept connections (timeout ${timeout_s}s)"

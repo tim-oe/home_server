@@ -9,7 +9,7 @@ Do not start this stack while the old `unifi` container is running — they shar
 
 `privileged: true` is required so `unifi-core` can start. Without it the service dies in `ExecStartPre` with `Result: timeout` and `:11443` accepts TCP but never completes TLS.
 
-`unifi-core-timeout.conf` is bind-mounted into the image's systemd drop-in dir. It sets `TimeoutStartSec=15min` and replaces `ExecStartPre` with: wait for `pg_isready` on 5432, then the vendor hook. The image's `postgresql.service` is `ExecStart=/bin/true`; without the wait, `unifi-core` races `postgresql@14-main` and sticks in `start-pre` until a manual restart. Do not PATH-shim `chown` — that crashed `unifi-core`.
+`unifi-core-timeout.conf` is bind-mounted into the image's systemd drop-in dir. It sets `TimeoutStartSec=15min` and replaces `ExecStartPre` with: wait for `pg_isready` on 5432, then the vendor hook. The image's `postgresql.service` is `ExecStart=/bin/true`; without the wait, `unifi-core` races `postgresql@14-main` and sticks in `start-pre` until a manual restart. The wait default is 900s (`UNIFI_CORE_PG_WAIT_TIMEOUT`) so crash recovery after an interrupted shutdown can finish. `stop_grace_period: 2m` gives systemd time to stop postgres cleanly on host reboot; Docker's 10s default SIGKILLs it and leaves a stale pid. The healthcheck is Postgres + `unifi-core` + `unifi` + `ulp-go`; `docker compose up` does not wait unless you pass `--wait --wait-timeout 900`. Do not PATH-shim `chown` — that crashed `unifi-core`.
 
 ## Deployment (files only)
 

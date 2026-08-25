@@ -4,10 +4,12 @@
 ---
 services:
   unifi-os-server:
-    image: ghcr.io/lemker/unifi-os-server:v1.4.0
+    image: ghcr.io/lemker/unifi-os-server:v1.5.1
     container_name: unifi-os-server
     hostname: unifi.localdomain
     restart: unless-stopped
+    # host reboot / docker stop default is 10s; that SIGKILLs postgres mid-shutdown
+    stop_grace_period: 2m
     # systemd services (unifi-core) time out without this; cgroup: host alone is not enough
     privileged: true
     # every UniFi OS component runs as a systemd service, which needs the host cgroup
@@ -47,8 +49,8 @@ services:
       - "8080:8080/tcp"
       - "3478:3478/udp"
       - "10003:10003/udp"
-      # transitional: APs still inform on the old controller's 8882, remove once they move to 8080
-      #- "8882:8080/tcp"
+      # APs still inform on the old controller port; remove after set-inform to :8080
+      - "8882:8080/tcp"
     networks:
       default:
         aliases:
@@ -57,6 +59,17 @@ services:
     labels:
       # for offen backup, mongodb cannot be safely hot copied
       - docker-volume-backup.stop-during-backup=true
+    # container "Up" is systemd only; use: docker compose up -d --wait --wait-timeout 900
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "pg_isready -q -p 5432 && systemctl is-active --quiet unifi-core && systemctl is-active --quiet unifi && systemctl is-active --quiet ulp-go",
+        ]
+      interval: 15s
+      timeout: 10s
+      retries: 8
+      start_period: 15m
   backup:
     # https://github.com/offen/docker-volume-backup/
     image: offen/docker-volume-backup:latest

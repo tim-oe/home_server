@@ -14,7 +14,8 @@ echo "starting backup to gdrive $START"
 
 rclone sync --progress /mnt/backup/docker/services gdrive:/backup/docker/services
 rclone sync --progress /mnt/backup/docker/vaultwarden gdrive:/backup/services/vault
-rclone sync --progress /mnt/backup/docker/unifi gdrive:/backup/services/unifi
+# deprecated
+#rclone sync --progress /mnt/backup/docker/unifi gdrive:/backup/services/unifi
 rclone sync --progress /mnt/backup/docker/unifi-os gdrive:/backup/services/unifi-os
 rclone sync --progress /mnt/backup/docker/mariadb gdrive:/backup/docker/mariadb
 rclone sync --progress /mnt/backup/weather/db gdrive:/backup/weather/db
