@@ -41,6 +41,13 @@ services:
       # parent dir already exists in the image (cap.conf, memory.conf)
       - ./unifi-core-timeout.conf:/lib/systemd/system/unifi-core.service.d/timeout.conf:ro
       - ./unifi-core-wait-postgres:/usr/local/bin/unifi-core-wait-postgres:ro
+      # privileged systemd claims host TTYs otherwise (login prompt becomes uos-server)
+      # https://github.com/lemker/unifi-os-server/issues/58
+      - /dev/null:/etc/systemd/system/getty@.service:ro
+      - /dev/null:/etc/systemd/system/serial-getty@.service:ro
+      - /dev/null:/etc/systemd/system/console-getty.service:ro
+      - /dev/null:/etc/systemd/system/container-getty@.service:ro
+      - /dev/null:/etc/systemd/system/autovt@.service:ro
       # force local TZ to avoid chron math
       - /etc/timezone:/etc/timezone:ro
       - /etc/localtime:/etc/localtime:ro
