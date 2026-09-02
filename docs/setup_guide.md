@@ -50,45 +50,53 @@
    ./gradlew deployCron
    ```
 
-2. **SSL Certificate Setup**
-   - Configure Cloudflare DNS settings
-   - Set up Certbot with Cloudflare plugin
-   - Generate initial certificates
+2. **Reverse Proxy and SSL Setup**
+   ```bash
+   ./gradlew deployTraefik
+
+   # on the host, after deploy so gradle does not clobber it
+   echo 'CF_DNS_API_TOKEN=<cloudflare-dns-token>' > /mnt/raid/services/traefik/.env
+   cd /mnt/raid/services/traefik && sudo docker compose up -d
+   ```
+   Traefik requests the `*.tecronin.uk` wildcard on first start via the Cloudflare DNS-01
+   challenge and renews it itself. Per-service routes are `traefik.*` labels on each service's
+   container — see [`src/services/traefik/README.md`](../src/services/traefik/README.md).
 
 ### Core Services Deployment
 
+Each stack is `src/services/<svc>/`. `./gradlew deploy<Svc>` copies the files to
+`/mnt/raid/services/<svc>`; starting the containers is always `docker compose up -d` on the host.
+
 1. **Build Tools**
-   - Jenkins
-   - Nexus
-   - SonarQube
-   Refer to `src/services/build/` for specific configurations
+   - Jenkins (`src/services/jenkins/`)
+   - Nexus (`src/services/nexus/`)
+   - SonarQube (`src/services/sonarqube/`)
 
 2. **Monitoring Stack**
-   - Grafana
-   - InfluxDB
-   - Telegraf
-   Refer to `src/services/monitoring/` for specific configurations
+   - Grafana and InfluxDB, one stack (`src/services/grafana/`)
 
 3. **Network Services**
-   - NGINX reverse proxy
-   - UniFi OS Server
-   Refer to `src/services/unifi-os/` for specific configurations
+   - Traefik reverse proxy (`src/services/traefik/`)
+   - UniFi OS Server (`src/services/unifi-os/`)
 
 ### Backup Configuration
 
 1. **Local Backup Setup**
+   Backups are per stack, not central. The `offen/docker-volume-backup` and `rclone` sidecars live
+   in the same `docker-compose.yml` as the service they protect (`vaultwarden`, `unifi-os`, `wiki`,
+   `gotify`, `traefik`), so there is nothing separate to deploy.
    ```bash
-   # Configure docker-volume-backup
-   # Edit backup configuration in src/services/backup/docker-compose.yml
+   # archive target on the NAS, created by the deploy task
+   ls -l /mnt/backup/docker/vaultwarden
    ```
 
 2. **Cloud Backup Setup**
    ```bash
-   # Configure rclone
-   rclone config
-   
-   # Test configuration
-   rclone ls remote:backup
+   # once, as root on the host — the sidecars mount this file read-only
+   rclone config          # creates /root/.config/rclone/rclone.conf
+
+   # test configuration
+   rclone ls gdrive:/backup
    ```
 
 ## Security Configuration
@@ -126,9 +134,8 @@
    ```
 
 2. **Reverse Proxy Setup**
-   - Configure NGINX
-   - Set up SSL termination
-   - Configure security headers
+   - Only 80 and 443 are published by Traefik; service ports on the LAN are for troubleshooting
+   - Restrict a route to the LAN with the `lan-only@file` middleware, as vaultwarden and unifi-os do
 
 ## Maintenance Procedures
 
@@ -186,9 +193,9 @@
    # Check Docker network
    docker network ls
    docker network inspect share-net
-   
-   # Verify NGINX configuration
-   nginx -t
+
+   # A bad traefik label drops the route silently rather than failing to start
+   docker logs traefik
    ```
 
 3. **Volume Issues**

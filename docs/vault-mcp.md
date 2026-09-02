@@ -351,42 +351,23 @@ volumes:
 > If your vault is on a **local filesystem** (not NFS) you can mount it
 > directly at `/vaults` and skip the split layout.
 
-### nginx vhost
+### Routing
 
-`proxy_http_version 1.1` and `proxy_buffering off` are required for the
-guacamole WebSocket session. Use the container hostname directly in
-`proxy_pass` — the `set $upstream` variable pattern does not work with this
-service.
+Routing is [Traefik](../src/services/traefik/README.md) labels on the container itself, so there is
+no separate proxy config to edit:
 
-```nginx
-server {
-    listen 443 ssl;
-    server_name obsidian.example.com;  # <-- SET THIS
-
-    location / {
-        proxy_pass http://obsidian:8080;
-
-        proxy_http_version 1.1;
-
-        proxy_set_header Connection $connection_upgrade;
-        proxy_set_header Upgrade $http_upgrade;
-
-        proxy_set_header Host $host;
-        proxy_set_header X-Real-IP $remote_addr;
-        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto $scheme;
-        proxy_set_header X-Forwarded-Host $host;
-        proxy_set_header X-Forwarded-Port $server_port;
-
-        proxy_connect_timeout 10s;
-        proxy_send_timeout 3600s;
-        proxy_read_timeout 3600s;
-
-        proxy_buffering off;
-        proxy_request_buffering off;
-    }
-}
+```yaml
+    labels:
+      - traefik.enable=true
+      - traefik.http.routers.obsidian.rule=Host(`obsidian.example.com`)  # <-- SET THIS
+      - traefik.http.routers.obsidian.entrypoints=websecure
+      - traefik.http.services.obsidian.loadbalancer.server.port=8080
 ```
+
+The guacamole session needs a WebSocket upgrade over a long-lived, unbuffered connection. Traefik
+performs the upgrade automatically and does not buffer, so the `proxy_http_version 1.1`,
+`Connection`/`Upgrade` headers, `proxy_buffering off` and hour-long `proxy_read_timeout` that the
+old nginx vhost required have no equivalent to set here.
 
 ### First launch
 

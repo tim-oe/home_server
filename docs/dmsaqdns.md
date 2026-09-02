@@ -118,7 +118,7 @@ Host entries serve dual purpose: DHCP reservation when a MAC and IP are provided
 
 ## Step 6 — CNAME Records for Reverse Proxy / Containers
 
-For a server running multiple containers behind an nginx reverse proxy, use CNAMEs rather than aliases. One host entry holds the server's IP reservation; each service gets its own DNS-only entry pointing to it.
+For a server running multiple containers behind a reverse proxy, use CNAMEs rather than aliases. One host entry holds the server's IP reservation; each service gets its own DNS-only entry pointing to it.
 
 **Primary host entry** (with DHCP reservation):
 

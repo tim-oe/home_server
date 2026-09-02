@@ -133,18 +133,11 @@ tasks.register('deployWiki', GradleBuild) {
 }
 
 tasks.register('deployGdrive', GradleBuild) {
-    description = 'deploy gdrive orphan-path sync stack and retire host rclone cron'
+    description = 'deploy gdrive orphan-path sync stack'
     group = "deploy stuff"
     buildName = 'gdrive'
     startParameter.projectProperties = ['svc':'gdrive']
     tasks = ['deployService']
-    doLast {
-        ssh.run {
-            session(remotes.desktop) {
-                executeSudo 'rm -f /etc/cron.d/docker_gdrive_backup /mnt/raid/bin/cron/docker_gdrive_backup.sh'
-            }
-        }
-    }
 }
 
 tasks.register('deployObsidian', GradleBuild) {
@@ -204,18 +197,6 @@ tasks.register('deployTraefik', GradleBuild) {
         ssh.run {
             session(remotes.desktop) {
                 executeSudo 'mkdir -p /mnt/backup/docker/traefik'
-            }
-        }
-    }
-    doLast {
-        ssh.run {
-            session(remotes.desktop) {
-                executeSudo 'test ! -f /mnt/raid/services/nginx/docker-compose.yml || (cd /mnt/raid/services/nginx && docker compose down --remove-orphans -v)'
-                executeSudo 'docker rm -f nginx nginx-certbot || true'
-                executeSudo 'docker volume rm certbot_etc certbot_lib || true'
-                executeSudo 'docker image rm nginx:1.30.4-alpine-slim nginx:stable-alpine-slim certbot/dns-cloudflare:v5.8.0 certbot/dns-cloudflare:latest || true'
-                executeSudo 'rm -rf /mnt/raid/services/nginx'
-                executeSudo 'rm -f /etc/cron.d/docker_nginx_restart /mnt/raid/bin/cron/docker_nginx_restart.sh /mnt/raid/bin/service.sh'
             }
         }
     }

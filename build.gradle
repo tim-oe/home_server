@@ -132,8 +132,6 @@ tasks.register('deployCron') {
                 result = executeSudo "cp /tmp/cron.d/* /etc/cron.d/"
                 result = executeSudo "chmod 644 /etc/cron.d/*"
                 result = executeSudo "chown root:root /etc/cron.d/*"
-                // host rclone cron retired in favour of per-stack sidecars + src/services/gdrive
-                result = executeSudo 'rm -f /etc/cron.d/docker_gdrive_backup'
             }
         }
     }

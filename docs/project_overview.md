@@ -18,12 +18,12 @@ This project implements a comprehensive home lab cloud-like setup for developmen
 
 3. **Network Management**
    - UniFi OS Server: Wireless Access Point management
-   - NGINX: Reverse proxy server
-   - Certbot: SSL certificate automation with Cloudflare DNS
+   - Traefik: reverse proxy; routes are `traefik.*` labels on each service's container
 
 4. **Security & Access**
    - Vaultwarden: Password management system
-   - SSL/TLS encryption via Certbot
+   - SSL/TLS: a single `*.tecronin.uk` wildcard, issued and renewed by Traefik's ACME resolver
+     over the Cloudflare DNS-01 challenge
 
 5. **Infrastructure Management**
    - Portainer: Docker container management
@@ -34,16 +34,25 @@ This project implements a comprehensive home lab cloud-like setup for developmen
 
 ## Backup Strategy
 
-### Two-Tier Backup System
-1. **Local Backup**
-   - Implementation: docker-volume-backup
-   - Target: Local NAS storage
+### Three-Tier Backup System
+1. **Local volume archives**
+   - Implementation: an `offen/docker-volume-backup` sidecar per stack that holds irreplaceable data
+   - Target: `/mnt/backup/docker/<svc>` on the NAS, 7 day retention
    - Purpose: Quick recovery and local redundancy
 
-2. **Cloud Backup**
-   - Implementation: rclone
-   - Configuration: `/root/.config/rclone/rclone.conf`
+2. **Offsite copy**
+   - Implementation: an idle `rclone` sidecar per stack, exec'd by offen's `prune-post` hook so the
+     sync runs after retention has been applied
+   - Configuration: `/root/.config/rclone/rclone.conf`, mounted read-only
    - Purpose: Off-site disaster recovery
+
+3. **Config zip**
+   - Implementation: `services_backup.sh` from host cron, plus the `gdrive` stack for the backup
+     paths that have no owning compose stack
+   - Target: `/mnt/backup/docker/services`, then Google Drive
+   - Purpose: rebuild any stack that keeps no archived volume
+
+Details, schedules and destinations: the backup section of the [main README](../README.md).
 
 ## Network Architecture
 
@@ -97,7 +106,6 @@ home_server/
 
 3. **Network Services**
    - Pi-hole DNS management
-   - Nginx Proxy Manager implementation
    - Uptime-Kuma monitoring
 
 4. **Infrastructure Management**
