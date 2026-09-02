@@ -1,0 +1,38 @@
+# https://crazymax.dev/diun/
+# https://hub.docker.com/r/crazymax/diun
+---
+services:
+  diun:
+    image: crazymax/diun:4.33.0
+    container_name: diun
+    hostname: diun
+    restart: unless-stopped
+    command: ["serve"]
+    env_file:
+      - path: /etc/environment
+        required: false
+    environment:
+      # /diun.yml is not in the image workdir; -c is not a valid flag
+      CONFIG: /diun.yml
+      PATH: /usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+      TZ: America/Chicago
+      LOG_LEVEL: info
+    volumes:
+      - ./diun.yml:/diun.yml:ro
+      - diun-data:/data
+      - /var/run/docker.sock:/var/run/docker.sock
+      - /etc/timezone:/etc/timezone:ro
+      - /etc/localtime:/etc/localtime:ro
+    healthcheck:
+      test: ["CMD", "diun", "healthcheck"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 60s
+volumes:
+  diun-data:
+    name: diun-data
+networks:
+  default:
+    external: true
+    name: share-net

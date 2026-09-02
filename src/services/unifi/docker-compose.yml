@@ -30,7 +30,7 @@ services:
       - docker-volume-backup.stop-during-backup=true
   backup:
     # https://github.com/offen/docker-volume-backup/
-    image: offen/docker-volume-backup:latest
+    image: offen/docker-volume-backup:v2.48.2
     container_name: unifi-backup
     restart: always
     environment:

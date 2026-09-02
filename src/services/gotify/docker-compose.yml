@@ -1,0 +1,76 @@
+# https://gotify.net/docs/config
+# https://hub.docker.com/r/gotify/server
+---
+services:
+  gotify:
+    image: gotify/server:3.1.0
+    container_name: gotify
+    hostname: gotify
+    restart: unless-stopped
+    env_file:
+      - /etc/environment
+    environment:
+      GOTIFY_DEFAULTUSER_NAME: admin
+      # interpolated from this directory's .env (not from env_file)
+      GOTIFY_DEFAULTUSER_PASS: ${GOTIFY_DEFAULTUSER_PASS:?set GOTIFY_DEFAULTUSER_PASS in .env}
+      GOTIFY_REGISTRATION: "false"
+    volumes:
+      - gotify-data:/app/data
+      - /etc/timezone:/etc/timezone:ro
+      - /etc/localtime:/etc/localtime:ro
+    labels:
+      - docker-volume-backup.stop-during-backup=true
+      - traefik.enable=true
+      - traefik.http.routers.gotify.rule=Host(`gotify.tecronin.uk`)
+      - traefik.http.routers.gotify.entrypoints=websecure
+      - traefik.http.services.gotify.loadbalancer.server.port=80
+  backup:
+    # https://github.com/offen/docker-volume-backup/
+    image: offen/docker-volume-backup:v2.48.2
+    container_name: gotify-backup
+    restart: always
+    environment:
+      EXEC_LABEL: gotify
+      BACKUP_CRON_EXPRESSION: "45 01 * * *"
+      BACKUP_FILENAME: backup-%Y-%m-%dT%H-%M-%S.tar.gz
+      BACKUP_PRUNING_PREFIX: backup-
+      BACKUP_RETENTION_DAYS: 7
+    volumes:
+      - /etc/timezone:/etc/timezone:ro
+      - /etc/localtime:/etc/localtime:ro
+      - gotify-data:/backup:ro
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - /mnt/backup/docker/gotify:/archive
+    labels:
+      - diun.enable=false
+  gdrive:
+    image: rclone/rclone:1.75.0
+    container_name: gotify-gdrive
+    restart: unless-stopped
+    # alpine busybox sleep has no infinity; idle until offen execs prune-post
+    entrypoint: ["tail", "-f", "/dev/null"]
+    env_file:
+      - path: /etc/environment
+        required: false
+    environment:
+      PATH: /usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+      RCLONE_SRC: /archive
+      RCLONE_DEST: gdrive:/backup/services/gotify
+      GOTIFY_URL: http://gotify
+    volumes:
+      - /etc/timezone:/etc/timezone:ro
+      - /etc/localtime:/etc/localtime:ro
+      - /root/.config/rclone/rclone.conf:/config/rclone/rclone.conf:ro
+      - /mnt/backup/docker/gotify:/archive:ro
+      - ./_common/rclone-sync.sh:/rclone-sync.sh:ro
+    labels:
+      - docker-volume-backup.exec-label=gotify
+      - docker-volume-backup.prune-post=/bin/sh /rclone-sync.sh
+      - diun.enable=false
+volumes:
+  gotify-data:
+    name: gotify-data
+networks:
+  default:
+    external: true
+    name: share-net

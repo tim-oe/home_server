@@ -2,7 +2,7 @@
 # https://www.jeffgeerling.com/blog/2025/nut-on-my-pi-so-my-servers-dont-die
 services:
   nutwebdesktop:
-    image: ghcr.io/superioone/nut_webgui:latest
+    image: ghcr.io/superioone/nut_webgui:0.10.2
     restart: always
     hostname: "upsdesktop"
     container_name: "upsdesktop"
@@ -19,8 +19,13 @@ services:
       LISTEN: "0.0.0.0"
       PORT: "8010"
       LOG_LEVEL: "debug"
+    labels:
+      - traefik.enable=true
+      - traefik.http.routers.upsdesktop.rule=Host(`upsdesktop.tecronin.uk`)
+      - traefik.http.routers.upsdesktop.entrypoints=websecure
+      - traefik.http.services.upsdesktop.loadbalancer.server.port=8010
   nutwebpimgr:
-    image: ghcr.io/superioone/nut_webgui:latest
+    image: ghcr.io/superioone/nut_webgui:0.10.2
     hostname: "upspimgr"
     container_name: "upspimgr"
     restart: always
@@ -37,6 +42,11 @@ services:
       LISTEN: "0.0.0.0"
       PORT: "8020"
       LOG_LEVEL: "debug"
+    labels:
+      - traefik.enable=true
+      - traefik.http.routers.upspimgr.rule=Host(`upspimgr.tecronin.uk`)
+      - traefik.http.routers.upspimgr.entrypoints=websecure
+      - traefik.http.services.upspimgr.loadbalancer.server.port=8020
 networks:
   default:
     external: true

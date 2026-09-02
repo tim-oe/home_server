@@ -20,6 +20,13 @@ services:
       - /etc/localtime:/etc/localtime:ro
     environment:
       - TZ=Europe/London
+    labels:
+      # upstream only publishes latest; watch that tag's digest, not the whole repo
+      - diun.watch_repo=false
+      - traefik.enable=true
+      - traefik.http.routers.obsidian.rule=Host(`obsidian.tecronin.uk`)
+      - traefik.http.routers.obsidian.entrypoints=websecure
+      - traefik.http.services.obsidian.loadbalancer.server.port=8080
 volumes:
   obsidian-config:
     name: obsidian-config

@@ -15,6 +15,11 @@ services:
     ports:
       - "8081:8081"
       - "8082:8082"
+    labels:
+      - traefik.enable=true
+      - traefik.http.routers.nexus.rule=Host(`nexus.tecronin.uk`)
+      - traefik.http.routers.nexus.entrypoints=websecure
+      - traefik.http.services.nexus.loadbalancer.server.port=8081
 volumes:
   nexus-data:
     name: nexus-data  

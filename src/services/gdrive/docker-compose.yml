@@ -1,0 +1,32 @@
+# Offsite sync for backup paths that have no offen instance to hook a prune-post into.
+# /mnt/backup/docker/services = zip of /mnt/raid/services (compose/configs).
+# /mnt/backup/weather/db = WeatherWatch dumps from tec-weather, not a Docker volume here.
+# Replaces src/bin/cron/docker_gdrive_backup.sh (host rclone + cron.d).
+---
+services:
+  gdrive:
+    image: rclone/rclone:1.75.0
+    container_name: gdrive-sync
+    hostname: gdrive-sync
+    restart: unless-stopped
+    # alpine crond; -f stays in the foreground, -d 8 logs to stderr for docker logs
+    entrypoint: ["/usr/sbin/crond", "-f", "-d", "8"]
+    env_file:
+      - path: /etc/environment
+        required: false
+    environment:
+      PATH: /usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+      GOTIFY_URL: http://gotify
+    volumes:
+      - /etc/timezone:/etc/timezone:ro
+      - /etc/localtime:/etc/localtime:ro
+      - /root/.config/rclone/rclone.conf:/config/rclone/rclone.conf:ro
+      - /mnt/backup/docker/services:/backup/services:ro
+      - /mnt/backup/weather/db:/backup/weather:ro
+      - ./_common/rclone-sync.sh:/rclone-sync.sh:ro
+      - ./sync-orphans.sh:/sync-orphans.sh:ro
+      - ./crontab:/etc/crontabs/root:ro
+networks:
+  default:
+    external: true
+    name: share-net

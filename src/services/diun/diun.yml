@@ -1,0 +1,28 @@
+# https://crazymax.dev/diun/config/
+watch:
+  workers: 20
+  schedule: "0 6 * * *"
+  jitter: 30s
+  firstCheckNotif: false
+
+providers:
+  docker:
+    watchByDefault: true
+    watchStopped: true
+
+defaults:
+  watchRepo: true
+  notifyOn:
+    - new
+    - update
+  sortTags: semver
+  maxTags: 20
+  includeTags:
+    - ^\d+(\.\d+)+$
+    - ^v\d+(\.\d+)+$
+
+notif:
+  gotify:
+    endpoint: http://gotify
+    priority: 5
+    timeout: 10s

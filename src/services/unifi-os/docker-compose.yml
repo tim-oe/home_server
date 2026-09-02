@@ -61,11 +61,18 @@ services:
     networks:
       default:
         aliases:
-          # nginx unifi.conf proxies to this name
+          # share-net alias (legacy nginx name; Traefik uses docker labels)
           - unifi.localdomain
     labels:
       # for offen backup, mongodb cannot be safely hot copied
       - docker-volume-backup.stop-during-backup=true
+      - traefik.enable=true
+      - traefik.http.routers.unifi-os.rule=Host(`unifi.tecronin.uk`)
+      - traefik.http.routers.unifi-os.entrypoints=websecure
+      - traefik.http.routers.unifi-os.middlewares=lan-only@file
+      - traefik.http.services.unifi-os.loadbalancer.server.port=443
+      - traefik.http.services.unifi-os.loadbalancer.server.scheme=https
+      - traefik.http.services.unifi-os.loadbalancer.serverstransport=unifi@file
     # container "Up" is systemd only; use: docker compose up -d --wait --wait-timeout 900
     healthcheck:
       test:
@@ -79,10 +86,11 @@ services:
       start_period: 15m
   backup:
     # https://github.com/offen/docker-volume-backup/
-    image: offen/docker-volume-backup:latest
+    image: offen/docker-volume-backup:v2.48.2
     container_name: unifi-os-backup
     restart: always
     environment:
+      EXEC_LABEL: unifi-os
       BACKUP_CRON_EXPRESSION: "15 01 * * *"
       BACKUP_FILENAME: backup-%Y-%m-%dT%H-%M-%S.tar.gz
       BACKUP_PRUNING_PREFIX: backup-
@@ -99,6 +107,32 @@ services:
       - unifi-os-rabbitmq-ssl:/backup/rabbitmq-ssl:ro
       - /var/run/docker.sock:/var/run/docker.sock:ro
       - /mnt/backup/docker/unifi-os:/archive
+    labels:
+      - diun.enable=false
+  gdrive:
+    image: rclone/rclone:1.75.0
+    container_name: unifi-os-gdrive
+    restart: unless-stopped
+    # alpine busybox sleep has no infinity; idle until offen execs prune-post
+    entrypoint: ["tail", "-f", "/dev/null"]
+    env_file:
+      - path: /etc/environment
+        required: false
+    environment:
+      PATH: /usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+      RCLONE_SRC: /archive
+      RCLONE_DEST: gdrive:/backup/services/unifi-os
+      GOTIFY_URL: http://gotify
+    volumes:
+      - /etc/timezone:/etc/timezone:ro
+      - /etc/localtime:/etc/localtime:ro
+      - /root/.config/rclone/rclone.conf:/config/rclone/rclone.conf:ro
+      - /mnt/backup/docker/unifi-os:/archive:ro
+      - ./_common/rclone-sync.sh:/rclone-sync.sh:ro
+    labels:
+      - docker-volume-backup.exec-label=unifi-os
+      - docker-volume-backup.prune-post=/bin/sh /rclone-sync.sh
+      - diun.enable=false
 volumes:
   unifi-os-persistent:
     name: unifi-os-persistent

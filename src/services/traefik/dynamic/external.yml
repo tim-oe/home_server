@@ -1,0 +1,16 @@
+# WeatherWatch on tec-weather (not a container on this host). Public name
+# weather.tecronin.uk hits Traefik on tec-desktop; backend is the LAN host.
+# Traefik's compose dns (192.168.1.1) is required so this name does not loop.
+http:
+  routers:
+    weather:
+      rule: Host(`weather.tecronin.uk`)
+      entryPoints:
+        - websecure
+      service: weather
+  services:
+    weather:
+      loadBalancer:
+        passHostHeader: true
+        servers:
+          - url: http://tec-weather.localdomain:8000

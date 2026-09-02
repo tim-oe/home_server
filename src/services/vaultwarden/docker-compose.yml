@@ -7,7 +7,7 @@
 ---
 services:
   vaultwarden:
-    image: vaultwarden/server:latest
+    image: vaultwarden/server:1.37.2
     container_name: vaultwarden
     hostname: vaultwarden
     networks:
@@ -41,12 +41,18 @@ services:
     labels:
       # for offen backup
       - docker-volume-backup.stop-during-backup=true
+      - traefik.enable=true
+      - traefik.http.routers.vaultwarden.rule=Host(`vaultwarden.tecronin.uk`)
+      - traefik.http.routers.vaultwarden.entrypoints=websecure
+      - traefik.http.routers.vaultwarden.middlewares=lan-only@file
+      - traefik.http.services.vaultwarden.loadbalancer.server.port=8860
   backup:
     # https://github.com/offen/docker-volume-backup/
-    image: offen/docker-volume-backup:latest
+    image: offen/docker-volume-backup:v2.48.2
     container_name: vaultwarden-backup
     restart: always
     environment:
+      EXEC_LABEL: vaultwarden
       BACKUP_CRON_EXPRESSION: "5 01 * * *"
       BACKUP_FILENAME: backup-%Y-%m-%dT%H-%M-%S.tar.gz
       BACKUP_PRUNING_PREFIX: backup-
@@ -58,6 +64,30 @@ services:
       - vaultwarden-storage:/backup:ro
       - /var/run/docker.sock:/var/run/docker.sock:ro
       - /mnt/backup/docker/vaultwarden:/archive
+  gdrive:
+    image: rclone/rclone:1.75.0
+    container_name: vaultwarden-gdrive
+    restart: unless-stopped
+    # alpine busybox sleep has no infinity; idle until offen execs prune-post
+    entrypoint: ["tail", "-f", "/dev/null"]
+    env_file:
+      - path: /etc/environment
+        required: false
+    environment:
+      PATH: /usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+      RCLONE_SRC: /archive
+      RCLONE_DEST: gdrive:/backup/services/vault
+      GOTIFY_URL: http://gotify
+    volumes:
+      - /etc/timezone:/etc/timezone:ro
+      - /etc/localtime:/etc/localtime:ro
+      - /root/.config/rclone/rclone.conf:/config/rclone/rclone.conf:ro
+      - /mnt/backup/docker/vaultwarden:/archive:ro
+      - ./_common/rclone-sync.sh:/rclone-sync.sh:ro
+    labels:
+      - docker-volume-backup.exec-label=vaultwarden
+      - docker-volume-backup.prune-post=/bin/sh /rclone-sync.sh
+      - diun.enable=false
 volumes:
   vaultwarden-storage:
     name: vaultwarden-storage

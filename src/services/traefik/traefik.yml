@@ -1,0 +1,59 @@
+# Static config. TLS for every router is set on the websecure entrypoint, so
+# service labels do not need certResolver or tls=true.
+# https://doc.traefik.io/traefik/v3.7/
+log:
+  level: INFO
+
+global:
+  checkNewVersion: false
+  sendAnonymousUsage: false
+
+api:
+  dashboard: true
+  insecure: false
+
+ping:
+  entryPoint: ping
+
+entryPoints:
+  web:
+    address: ":80"
+    http:
+      aliasHeadersStrategy: delete
+      redirections:
+        entryPoint:
+          to: websecure
+          scheme: https
+  websecure:
+    address: ":443"
+    http:
+      aliasHeadersStrategy: delete
+      tls:
+        certResolver: cloudflare
+        domains:
+          - main: tecronin.uk
+            sans:
+              - "*.tecronin.uk"
+  ping:
+    address: ":8082"
+    http:
+      aliasHeadersStrategy: delete
+
+certificatesResolvers:
+  cloudflare:
+    acme:
+      email: tecronin@gmail.com
+      storage: /letsencrypt/acme.json
+      dnsChallenge:
+        provider: cloudflare
+        propagation:
+          delayBeforeChecks: 15s
+
+providers:
+  docker:
+    endpoint: unix:///var/run/docker.sock
+    exposedByDefault: false
+    network: share-net
+  file:
+    directory: /dynamic
+    watch: true

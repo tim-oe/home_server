@@ -40,13 +40,6 @@ A Cursor rule at `~/.cursor/rules/obsidian-vault-context.mdc` makes the AI autom
 2. In the Obsidian remote desktop, click **Open folder as vault**
 3. Navigate to `/brain/vault` (or whichever subfolder you created on the share)
 
-## nginx vhost notes
-
-- Uses `proxy_pass http://obsidian:8080` with the container hostname directly — the `set $upstream X.share-net` pattern used by other services does not work correctly here.
-- `proxy_http_version 1.1` is required for the guacamole WebSocket upgrade.
-- `proxy_buffering off` / `proxy_request_buffering off` are required for streaming VNC traffic.
-- Read/send timeouts are set to 3600s to keep idle desktop sessions alive.
-
 ## Deployment
 
 ```bash
@@ -55,14 +48,10 @@ A Cursor rule at `~/.cursor/rules/obsidian-vault-context.mdc` makes the AI autom
 
 # On the server — first deploy only
 mkdir -p /mnt/raid/services/obsidian/vaults
-cp /mnt/raid/services/obsidian/obsidian.conf /mnt/raid/services/nginx/.conf.d/obsidian.conf
 
 # Start the container
 cd /mnt/raid/services/obsidian
 docker compose up -d
-
-# Reload nginx to pick up the new vhost
-docker exec nginx nginx -s reload
 ```
 
 ## Updating

@@ -16,7 +16,7 @@ That same privileged systemd will spawn gettys on the host's TTYs and take over 
 ## Deployment (files only)
 
 ```bash
-# Creates /mnt/raid/services/unifi-os and /mnt/backup/docker/unifi-os, then copies compose + vhost
+# Creates /mnt/raid/services/unifi-os and /mnt/backup/docker/unifi-os, then copies compose
 ./gradlew deployUnifiOs
 
 # On the server — named volumes (compose will also create these on first up)
@@ -26,7 +26,7 @@ That same privileged systemd will spawn gettys on the host's TTYs and take over 
 echo 'UOS_SYSTEM_IP=<lan-ip>' > /mnt/raid/services/unifi-os/.env
 ```
 
-Do **not** copy `unifi-os.conf` into nginx `.conf.d` until cutover. Two `server_name unifi.tecronin.uk` blocks will fail `nginx -t`.
+Routing is Traefik labels on `unifi-os-server` (`unifi.tecronin.uk`, `lan-only@file`, `unifi@file` transport).
 
 ## Cutover
 
@@ -38,14 +38,9 @@ Full runbook: [`.cursor/plan/unifi-os-server-migration.md`](../../../.cursor/pla
 4. Wizard at `https://<lan-ip>:11443` — same admin username as the old controller, **Continue Without Backup**.
 5. Restore the `.unf` from Settings > System > Backups.
 6. Wait for APs to come online via the `8882:8080` shim, then remove that port mapping.
-7. Swap the nginx vhost: remove `unifi.conf` from `.conf.d`, copy in `unifi-os.conf`, `nginx -t` and reload.
 
-## nginx vhost notes
-
-- Proxies to `https://unifi.localdomain` (compose network alias).
-- WebSocket upgrade is required for the UniFi OS UI.
-- `client_max_body_size 1G` is required for `.unf` restore uploads.
+UI is `https://unifi.tecronin.uk` via Traefik (self-signed backend, WebSocket, no body-size cap for `.unf` restores).
 
 ## Rollback
 
-`docker compose down` here, restore `unifi.conf` in nginx `.conf.d`, reload nginx, `docker compose up -d` in `src/services/unifi`.
+`docker compose down` here, then `docker compose up -d` in `src/services/unifi`. The old controller volume is untouched.

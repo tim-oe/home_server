@@ -1,0 +1,85 @@
+# https://doc.traefik.io/traefik/v3.7/
+# https://hub.docker.com/_/traefik
+---
+services:
+  traefik:
+    image: traefik:v3.7.12
+    container_name: traefik
+    hostname: traefik
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    environment:
+      CF_DNS_API_TOKEN: ${CF_DNS_API_TOKEN:?set CF_DNS_API_TOKEN in .env}
+    volumes:
+      - ./traefik.yml:/etc/traefik/traefik.yml:ro
+      - ./dynamic:/dynamic:ro
+      - traefik-acme:/letsencrypt
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - /etc/timezone:/etc/timezone:ro
+      - /etc/localtime:/etc/localtime:ro
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    # Unbound on OPNsense. Docker's 127.0.0.11 does not resolve LAN DHCP names, so
+    # tec-weather.localdomain would miss or loop back to this proxy (weather.tecronin.uk
+    # is a public name for tec-desktop). Docker backends use IPs from the socket, not DNS.
+    dns:
+      - 192.168.1.1
+    labels:
+      - docker-volume-backup.stop-during-backup=true
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://127.0.0.1:8082/ping"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+  backup:
+    # https://github.com/offen/docker-volume-backup/
+    image: offen/docker-volume-backup:v2.48.2
+    container_name: traefik-backup
+    restart: always
+    environment:
+      EXEC_LABEL: traefik
+      BACKUP_CRON_EXPRESSION: "50 01 * * *"
+      BACKUP_FILENAME: backup-%Y-%m-%dT%H-%M-%S.tar.gz
+      BACKUP_PRUNING_PREFIX: backup-
+      BACKUP_RETENTION_DAYS: 7
+    volumes:
+      - /etc/timezone:/etc/timezone:ro
+      - /etc/localtime:/etc/localtime:ro
+      - traefik-acme:/backup:ro
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - /mnt/backup/docker/traefik:/archive
+    labels:
+      - diun.enable=false
+  gdrive:
+    image: rclone/rclone:1.75.0
+    container_name: traefik-gdrive
+    restart: unless-stopped
+    # alpine busybox sleep has no infinity; idle until offen execs prune-post
+    entrypoint: ["tail", "-f", "/dev/null"]
+    env_file:
+      - path: /etc/environment
+        required: false
+    environment:
+      PATH: /usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+      RCLONE_SRC: /archive
+      RCLONE_DEST: gdrive:/backup/services/traefik
+      GOTIFY_URL: http://gotify
+    volumes:
+      - /etc/timezone:/etc/timezone:ro
+      - /etc/localtime:/etc/localtime:ro
+      - /root/.config/rclone/rclone.conf:/config/rclone/rclone.conf:ro
+      - /mnt/backup/docker/traefik:/archive:ro
+      - ./_common/rclone-sync.sh:/rclone-sync.sh:ro
+    labels:
+      - docker-volume-backup.exec-label=traefik
+      - docker-volume-backup.prune-post=/bin/sh /rclone-sync.sh
+      - diun.enable=false
+volumes:
+  traefik-acme:
+    name: traefik-acme
+networks:
+  default:
+    external: true
+    name: share-net

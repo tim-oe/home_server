@@ -262,7 +262,7 @@ variable that must be rewritten to the fixed `prometheus` UID, otherwise every p
 
 ## Task list
 
-- [ ] During overhaul Phase 3, skip the `influxdb.tecronin.uk` Traefik router. During Phase 4, skip backup
+- [x] During overhaul Phase 3, skip the `influxdb.tecronin.uk` Traefik router. During Phase 4, skip backup
   sidecars for `influxdb-data`, `influxdb-data2`, and `influxdb-conf`.
 - [ ] Remove the `influxdb` service and its three volumes from the grafana stack, and drop any leftover
   influxdb Traefik labels.

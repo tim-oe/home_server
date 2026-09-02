@@ -3,7 +3,7 @@
 ---
 services:
   sonarqube:
-    image: "sonarqube:lts-community"
+    image: "sonarqube:9.9.8-community"
     hostname: "sonarqube"
     container_name: "sonarqube"
     restart: "unless-stopped"
@@ -24,9 +24,15 @@ services:
       - target: 9000
         published: 9000
         protocol: tcp
-        mode: host    
+        mode: host
+    labels:
+      - 'diun.include_tags=^\d+\.\d+\.\d+-community$$'
+      - traefik.enable=true
+      - traefik.http.routers.sonarqube.rule=Host(`sonarqube.tecronin.uk`)
+      - traefik.http.routers.sonarqube.entrypoints=websecure
+      - traefik.http.services.sonarqube.loadbalancer.server.port=9000
   db:
-    image: "postgres:13"
+    image: "postgres:13.23"
     hostname: "postgresql"
     container_name: "postgresql"
     restart: "unless-stopped"

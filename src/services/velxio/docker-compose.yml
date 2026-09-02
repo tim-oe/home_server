@@ -1,6 +1,6 @@
 services:
   velxio:
-    image: ghcr.io/davidmonterocrespo24/velxio:master
+    image: ghcr.io/davidmonterocrespo24/velxio:master@sha256:4fb771cd9d2897d0ff3ccb0057445e3f942804e4cb11d01bc8d5266cff4a5fdb
     container_name: velxio
     hostname: velxio
     restart: unless-stopped
@@ -14,6 +14,15 @@ services:
       - SECRET_KEY=${VELXIO_SECRET_KEY}
       - FRONTEND_URL=https://velxio.tecronin.uk
       - COOKIE_SECURE=true
+    labels:
+      # upstream only publishes master; digest in image: is the pin
+      - diun.watch_repo=false
+      - traefik.enable=true
+      - traefik.http.routers.velxio.rule=Host(`velxio.tecronin.uk`)
+      - traefik.http.routers.velxio.entrypoints=websecure
+      - traefik.http.services.velxio.loadbalancer.server.port=80
+      - traefik.http.middlewares.velxio-host.headers.customrequestheaders.Host=localhost
+      - traefik.http.routers.velxio.middlewares=velxio-host
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost/health"]
       interval: 30s

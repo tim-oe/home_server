@@ -1,9 +1,6 @@
 #!/bin/bash
 #
 
-docker volume create --name "certbot_etc" --label "com.docker.compose.project=nginx" --label "com.docker.compose.version=2.35.1" --label "com.docker.compose.volume=certbot_etc"
-docker volume create --name "certbot_lib" --label "com.docker.compose.project=nginx" --label "com.docker.compose.version=2.35.1" --label "com.docker.compose.volume=certbot_lib"
-
 docker volume create --name "grafana-data" --label "com.docker.compose.project=grafana" --label "com.docker.compose.version=2.35.1" --label "com.docker.compose.volume=grafana-data"
 docker volume create --name "grafana-provisioning" --label "com.docker.compose.project=grafana" --label "com.docker.compose.version=2.35.1" --label "com.docker.compose.volume=grafana-provisioning"
 

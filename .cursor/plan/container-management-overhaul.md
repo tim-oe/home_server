@@ -113,10 +113,10 @@ non-zero exit.
 
 ```yaml
   gdrive:
-    image: rclone/rclone:1.71.0
+    image: rclone/rclone:1.75.0
     container_name: vaultwarden-gdrive
     restart: unless-stopped
-    entrypoint: ["sleep", "infinity"]
+    entrypoint: ["tail", "-f", "/dev/null"]
     environment:
       RCLONE_SRC: /archive
       RCLONE_DEST: gdrive:/backup/services/vault
@@ -134,7 +134,9 @@ non-zero exit.
 service gets `EXEC_LABEL: vaultwarden`.
 
 Destinations carry over unchanged from the current script: vaultwarden to `gdrive:/backup/services/vault`,
-unifi to `/backup/services/unifi`, unifi-os to `/backup/services/unifi-os`, mariadb to `/backup/docker/mariadb`.
+unifi-os to `/backup/services/unifi-os`. The old `unifi` stack is deprecated and is not given a sidecar.
+Wiki is new at `gdrive:/backup/docker/wiki`. `src/services/mariadb` is not in production yet — leave its
+compose as-is (logical dump + offen only) and add the rclone sidecar when that stack is ready.
 
 **Orphan paths.** `/mnt/backup/docker/services` and `/mnt/backup/weather/db` have no offen instance to hook
 into, so they get one small `src/services/gdrive/` stack that runs busybox `crond` on a schedule. Once that
@@ -248,20 +250,15 @@ per-service `<svc>.conf` files, and `src/bin/cron/docker_nginx_restart.sh` with 
 
 ---
 
-## Phase 4: backfill unprotected volumes
+## Phase 4: volume backups — not doing this
 
-Add the offen + rclone sidecar pair to the 11 stacks that have named volumes and no backup today: jenkins,
-nexus, grafana/influxdb, openhab, sonarqube, portainer, timescaledb, obsidian, velxio, redis, rabbitmq. Volume
-copies only, no dumps.
+Named Docker volumes are only backed up for the stacks that hold irreplaceable app data: vaultwarden,
+unifi-os, and wiki (offen + rclone already in place). Everything else is covered by the zip of
+`/mnt/raid/services` (`services_backup.sh` → `/mnt/backup/docker/services` → gdrive). Jenkins, nexus,
+grafana, and the rest can be rebuilt from compose in that tree.
 
-Every container in each of these stacks gets `docker-volume-backup.stop-during-backup=true`, including the
-multi-container ones — `sonarqube` and its `postgres:13`, `grafana` and `influxdb`. Give each stack a distinct
-`EXEC_LABEL` and stagger `BACKUP_CRON_EXPRESSION` so the stop windows, NAS writes, and gdrive pushes do not all
-land at once.
-
-One thing to watch when scheduling: timescaledb and influxdb have writers outside their own stack, so their
-stop window is a gap in weather and metrics ingestion rather than just a UI outage. Put them at the quietest
-point in the rotation.
+`/mnt/backup/weather/db` is produced by WeatherWatch on tec-weather; the `gdrive` stack already syncs it.
+`src/services/mariadb` stays deferred until that stack is in use.
 
 ## Sequencing note
 
@@ -274,47 +271,52 @@ Progress is tracked here, in the repo. This file is the only plan artifact.
 
 ### Phase 1
 
-- [ ] Fix the wiki stack: point `/archive` at `/mnt/backup/docker/wiki` instead of the placeholder, add
+- [x] Fix the wiki stack: point `/archive` at `/mnt/backup/docker/wiki` instead of the placeholder, add
   `BACKUP_PRUNING_PREFIX`, drop the custom `BACKUP_STOP_CONTAINER_LABEL` in favour of the default
   `docker-volume-backup.stop-during-backup=true`, and put that label on `bookstack_db` as well as `bookstack`
   so `mariadb_data` is copied cold rather than hot.
-- [ ] Add `EXEC_LABEL` to every offen backup instance so lifecycle hooks do not cross-fire between stacks.
-- [ ] Add `src/services/_common/rclone-sync.sh` and extend `deployService` in `src/gradle/services.gradle` to
+- [x] Add `EXEC_LABEL` to every offen backup instance so lifecycle hooks do not cross-fire between stacks.
+- [x] Add `src/services/_common/rclone-sync.sh` and extend `deployService` in `src/gradle/services.gradle` to
   deploy `_common` into every service dir.
-- [ ] Add idle rclone sidecars with `prune-post` hooks to vaultwarden, unifi, unifi-os, mariadb, and wiki,
-  preserving the existing gdrive destination paths.
-- [ ] Add `src/services/gdrive` stack (busybox `crond`) for `/mnt/backup/docker/services` and
-  `/mnt/backup/weather/db`, then delete `docker_gdrive_backup.sh`, its cron.d entry, and the `/opt/rclone`
-  PATH dependency.
+- [x] Add idle rclone sidecars with `prune-post` hooks to vaultwarden, unifi-os, and wiki,
+  preserving the existing gdrive destination paths. The deprecated `unifi` stack is left alone.
+  `src/services/mariadb` is deferred until that stack is in use.
+- [x] Add `src/services/gdrive` stack (busybox `crond`) for `/mnt/backup/docker/services` (the
+  `/mnt/raid/services` config zip) and `/mnt/backup/weather/db` (WeatherWatch on tec-weather), then delete
+  `docker_gdrive_backup.sh`, its cron.d entry, and the `/opt/rclone` PATH dependency.
+- [ ] When `src/services/mariadb` is in use: add the rclone sidecar (`gdrive:/backup/docker/mariadb`) and
+  put `deployMariadb` back in `deployAll`.
 
 ### Phase 2
 
-- [ ] Pin all floating image tags across the compose files.
-- [ ] Add `src/services/gotify` stack with named volume, offen + rclone sidecars, gradle deploy task, and a
-  vhost (nginx `.conf` now, Traefik labels after Phase 3).
-- [ ] Add `src/services/diun` stack with docker provider, daily schedule, Gotify notifier, and
+- [x] Pin all floating image tags across the compose files.
+- [x] Add `src/services/gotify` stack with named volume, offen + rclone sidecars, gradle deploy task, and a
+  Traefik route.
+- [x] Add `src/services/diun` stack with docker provider, daily schedule, Gotify notifier, and
   `diun.enable`/`diun.include_tags` labels; document the alert-to-bump-to-deploy workflow in `README.md`.
 
 ### Phase 3
 
-- [ ] Add `src/services/traefik` stack: pinned `traefik:v3.5`, static `traefik.yml` with the wildcard on the
+- [x] Add `src/services/traefik` stack: pinned `traefik:v3.7.12` (v3.5.3's docker client speaks API 1.24;
+  this host requires ≥1.40), static `traefik.yml` with the wildcard on the
   websecure entrypoint and the Cloudflare DNS resolver, `acme.json` volume with offen + rclone sidecars, and a
   gradle deploy task.
-- [ ] Write `dynamic/middlewares.yml` (`lan-only` ipAllowList), `dynamic/transports.yml` (unifi-os
-  insecureSkipVerify plus restore timeouts), and `dynamic/external.yml` (weather at
-  `tec-weather.localdomain:8000`).
-- [ ] Add router and service labels to all 14 container-backed stacks, redeploying each one ahead of the
-  cutover while nginx still serves traffic.
-- [ ] Cut over: stop nginx, start Traefik, confirm the ACME DNS challenge issues the `*.tecronin.uk` wildcard,
-  and walk every route.
-- [ ] Write `src/services/traefik/README.md` with the route inventory, the two file-provider exceptions, and
+- [x] Write `dynamic/middlewares.yml` (`lan-only` ipAllowList), `dynamic/transports.yml` (unifi-os
+  insecureSkipVerify plus restore timeouts), and `dynamic/external.yml` (WeatherWatch at
+  `tec-weather.localdomain:8000`, Traefik DNS `192.168.1.1` so the name does not loop to this host).
+- [x] Add router and service labels to all container-backed stacks (plus Gotify). `influxdb.tecronin.uk` is
+  skipped. Redeploy each stack with `docker compose up -d` while nginx still serves traffic — labels are inert
+  until Traefik is started.
+- [x] Cut over: stop nginx, start Traefik, confirm the ACME DNS challenge issues the `*.tecronin.uk` wildcard,
+  and walk every route (weather.tecronin.uk verified off-LAN via mobile hotspot → WeatherWatch on tec-weather).
+- [x] Write `src/services/traefik/README.md` with the route inventory, the file-provider exceptions, and
   the procedure for adding a new service.
-- [ ] After verification, remove the nginx stack, certbot sidecar, `service.sh`, per-service `.conf` files, and
-  the nightly nginx restart cron; update gradle `deployAll` accordingly.
+- [x] After verification, remove the nginx stack, certbot sidecar, `service.sh`, per-service `.conf` files, and
+  the nightly nginx restart cron; drop `deployNginx` from `deployAll`.
 
 ### Phase 4
 
-- [ ] Backfill offen + rclone sidecars for the 11 stacks whose named volumes have no backup today, volume-only,
-  with `stop-during-backup=true` on every container in each stack and staggered schedules.
-- [ ] Confirm whether `/mnt/backup/weather/db` is a dump the out-of-repo weather app produces itself, or
-  whether timescaledb is the only copy of that data.
+- [x] Skip volume backfill for jenkins/nexus/grafana/etc. Config is `/mnt/raid/services`; volume sidecars
+  stay on vaultwarden, unifi-os, and wiki only. MariaDB still deferred.
+- [x] `/mnt/backup/weather/db` is WeatherWatch on tec-weather, not timescaledb. The gdrive stack already
+  syncs it.

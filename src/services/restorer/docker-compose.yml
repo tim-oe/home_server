@@ -8,6 +8,8 @@ services:
     volumes:
       - restorer:/restorer:rw
       - backup:/backup:ro
+    labels:
+      - diun.enable=false
 volumes:
   restorer:
     name: restorer

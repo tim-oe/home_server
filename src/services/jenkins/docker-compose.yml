@@ -3,7 +3,7 @@
 ---
 services:
   jenkins:
-    image: "jenkins/jenkins:lts"
+    image: "jenkins/jenkins:2.568.2-lts"
     container_name: "jenkins"
     hostname: "jenkins"
     restart: "unless-stopped"
@@ -13,7 +13,7 @@ services:
       - "JENKINS_OPTS=--httpPort=8080"
     ports:
       - target: 8080
-        # host 8080 reserved for UniFi OS Server inform; nginx still uses share-net :8080
+        # host 8080 reserved for UniFi OS Server inform; Traefik uses share-net :8080
         published: 8088
         protocol: tcp
         mode: host    
@@ -26,6 +26,12 @@ services:
       # sync local TZ and time
       - /etc/timezone:/etc/timezone:ro
       - /etc/localtime:/etc/localtime:ro
+    labels:
+      - 'diun.include_tags=^\d+\.\d+\.\d+-lts$$'
+      - traefik.enable=true
+      - traefik.http.routers.jenkins.rule=Host(`jenkins.tecronin.uk`)
+      - traefik.http.routers.jenkins.entrypoints=websecure
+      - traefik.http.services.jenkins.loadbalancer.server.port=8080
 volumes:
   jenkins-home:
     name: jenkins-home  

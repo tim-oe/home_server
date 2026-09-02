@@ -6,7 +6,7 @@
 services:
   # ─── MariaDB (required by BookStack — does not support PostgreSQL) ────────────
   mariadb:
-    image: lscr.io/linuxserver/mariadb:latest
+    image: lscr.io/linuxserver/mariadb:11.8.8
     container_name: bookstack_db
     restart: unless-stopped
     environment:
@@ -19,15 +19,17 @@ services:
       MYSQL_PASSWORD: bookstack@123              # <-- change this
     volumes:
       - mariadb_data:/config
+    labels:
+      - docker-volume-backup.stop-during-backup=true
     healthcheck:
-      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "bookstack", "-pchangeme_db"]
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "bookstack", "-pbookstack@123"]
       interval: 10s
       timeout: 5s
       retries: 5
 
   # ─── BookStack ────────────────────────────────────────────────────────────────
   bookstack:
-    image: lscr.io/linuxserver/bookstack:latest
+    image: lscr.io/linuxserver/bookstack:26.05.4
     container_name: bookstack
     restart: unless-stopped
     depends_on:
@@ -39,7 +41,7 @@ services:
       PUID: 1000
       PGID: 1000
       TZ: America/Chicago                        # <-- set your timezone
-      APP_URL: https://wiki.tecronin.uk        # <-- your public URL (important for nginx)
+      APP_URL: https://wiki.tecronin.uk
       APP_KEY: ${BOOKSTACK_APP_KEY}                                # <-- leave blank on first run, BookStack generates it
       DB_HOST: mariadb
       DB_PORT: 3306
@@ -61,23 +63,56 @@ services:
       - bookstack_config:/config
       - ./custom-php.ini:/etc/php85/conf.d/custom.ini
     labels:
-      - "bookstack.backup=true"
+      - docker-volume-backup.stop-during-backup=true
+      - traefik.enable=true
+      - traefik.http.routers.wiki.rule=Host(`wiki.tecronin.uk`)
+      - traefik.http.routers.wiki.entrypoints=websecure
+      - traefik.http.services.wiki.loadbalancer.server.port=80
 
   # ─── Volume Backup ───────────────────────────────────────────────────────────
   backup:
-    image: offen/docker-volume-backup:v2
+    image: offen/docker-volume-backup:v2.48.2
     container_name: bookstack_backup
     restart: unless-stopped
     environment:
+      EXEC_LABEL: wiki
       BACKUP_CRON_EXPRESSION: "0 2 * * *"
       BACKUP_FILENAME: "bookstack-backup-%Y-%m-%dT%H-%M-%S.tar.gz"
+      BACKUP_PRUNING_PREFIX: bookstack-backup-
       BACKUP_RETENTION_DAYS: "7"
-      BACKUP_STOP_CONTAINER_LABEL: "bookstack.backup=true"
     volumes:
+      - /etc/timezone:/etc/timezone:ro
+      - /etc/localtime:/etc/localtime:ro
       - mariadb_data:/backup/mariadb_data:ro
       - bookstack_config:/backup/bookstack_config:ro
-      - /path/to/your/backups:/archive          # <-- change to your backup path
+      - /mnt/backup/docker/wiki:/archive
       - /var/run/docker.sock:/var/run/docker.sock:ro
+    labels:
+      - diun.enable=false
+  gdrive:
+    image: rclone/rclone:1.75.0
+    container_name: wiki-gdrive
+    restart: unless-stopped
+    # alpine busybox sleep has no infinity; idle until offen execs prune-post
+    entrypoint: ["tail", "-f", "/dev/null"]
+    env_file:
+      - path: /etc/environment
+        required: false
+    environment:
+      PATH: /usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+      RCLONE_SRC: /archive
+      RCLONE_DEST: gdrive:/backup/docker/wiki
+      GOTIFY_URL: http://gotify
+    volumes:
+      - /etc/timezone:/etc/timezone:ro
+      - /etc/localtime:/etc/localtime:ro
+      - /root/.config/rclone/rclone.conf:/config/rclone/rclone.conf:ro
+      - /mnt/backup/docker/wiki:/archive:ro
+      - ./_common/rclone-sync.sh:/rclone-sync.sh:ro
+    labels:
+      - docker-volume-backup.exec-label=wiki
+      - docker-volume-backup.prune-post=/bin/sh /rclone-sync.sh
+      - diun.enable=false
 
 volumes:
   mariadb_data:

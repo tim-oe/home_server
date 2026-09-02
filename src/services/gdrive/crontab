@@ -1,0 +1,4 @@
+PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+
+# former host cron: src/etc/cron.d/docker_gdrive_backup (15 8 * * *)
+15 8 * * * /bin/sh /sync-orphans.sh

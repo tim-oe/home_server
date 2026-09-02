@@ -26,6 +26,11 @@ services:
       EXTRA_JAVA_OPTS: "-Duser.timezone=America/Chicago -Dgnu.io.rxtx.SerialPorts==/dev/ttyACM0"
       USER_ID: 9001
       GROUP_ID: 9001
+    labels:
+      - traefik.enable=true
+      - traefik.http.routers.openhab.rule=Host(`openhab.tecronin.uk`)
+      - traefik.http.routers.openhab.entrypoints=websecure
+      - traefik.http.services.openhab.loadbalancer.server.port=8881
 volumes:
   openhab-addons:
     name: openhab-addons  

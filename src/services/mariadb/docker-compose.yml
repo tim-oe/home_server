@@ -2,7 +2,7 @@
 ---
 services:
   mariadb:
-    image: mariadb:11.4
+    image: mariadb:11.4.13
     container_name: mariadb
     hostname: mariadb
     restart: unless-stopped
@@ -35,7 +35,7 @@ services:
       start_period: 30s
   backup:
     # https://github.com/offen/docker-volume-backup/
-    image: offen/docker-volume-backup:latest
+    image: offen/docker-volume-backup:v2.48.2
     container_name: mariadb-backup
     restart: always
     environment:

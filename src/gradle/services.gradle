@@ -6,6 +6,7 @@ tasks.register('deployService') {
                 executeSudo "chown ansible:ansible /mnt/raid/services/${project.svc}"
                 executeSudo "setfacl -m g:ansible:rwx /mnt/raid/services/${project.svc}"
                 put from: "${project.rootDir}/src/services/${project.svc}", into: '/mnt/raid/services'
+                put from: "${project.rootDir}/src/services/_common", into: "/mnt/raid/services/${project.svc}"
             }
         }
     }
@@ -33,23 +34,6 @@ tasks.register('deployNexus', GradleBuild) {
     buildName = 'nexus'
     startParameter.projectProperties = ['svc':'nexus']
     tasks = ['deployService']
-}
-
-tasks.register('deployNginx', GradleBuild) {
-    description = 'deploy nginx scripts'
-    group = "deploy stuff"
-    buildName = 'nginx'
-    startParameter.projectProperties = ['svc':'nginx']
-    tasks = ['deployService']
-    doLast {
-        ssh.run {
-            session(remotes.desktop) {
-                def result = executeSudo 'mkdir -p /mnt/raid/services/nginx/.conf.d'
-                result = executeSudo 'chmod 777 /mnt/raid/services/nginx/.conf.d'
-            }
-        }
-    }
-
 }
 
 tasks.register('deployOpenhab', GradleBuild) {
@@ -133,20 +117,34 @@ tasks.register('deployVault', GradleBuild) {
     tasks = ['deployService']
 }
 
-tasks.register('deployWeather', GradleBuild) {
-    description = 'deploy weather scripts'
-    group = "deploy stuff"
-    buildName = 'weather'
-    startParameter.projectProperties = ['svc':'weather']
-    tasks = ['deployService']
-}
-
 tasks.register('deployWiki', GradleBuild) {
     description = 'deploy wiki scripts'
     group = "deploy stuff"
     buildName = 'wiki'
     startParameter.projectProperties = ['svc':'wiki']
     tasks = ['deployService']
+    doFirst {
+        ssh.run {
+            session(remotes.desktop) {
+                executeSudo 'mkdir -p /mnt/backup/docker/wiki'
+            }
+        }
+    }
+}
+
+tasks.register('deployGdrive', GradleBuild) {
+    description = 'deploy gdrive orphan-path sync stack and retire host rclone cron'
+    group = "deploy stuff"
+    buildName = 'gdrive'
+    startParameter.projectProperties = ['svc':'gdrive']
+    tasks = ['deployService']
+    doLast {
+        ssh.run {
+            session(remotes.desktop) {
+                executeSudo 'rm -f /etc/cron.d/docker_gdrive_backup /mnt/raid/bin/cron/docker_gdrive_backup.sh'
+            }
+        }
+    }
 }
 
 tasks.register('deployObsidian', GradleBuild) {
@@ -173,8 +171,58 @@ tasks.register('deployTimescaledb', GradleBuild) {
     tasks = ['deployService']
 }
 
+tasks.register('deployGotify', GradleBuild) {
+    description = 'deploy gotify scripts and create backup dir'
+    group = "deploy stuff"
+    buildName = 'gotify'
+    startParameter.projectProperties = ['svc':'gotify']
+    tasks = ['deployService']
+    doFirst {
+        ssh.run {
+            session(remotes.desktop) {
+                executeSudo 'mkdir -p /mnt/backup/docker/gotify'
+            }
+        }
+    }
+}
+
+tasks.register('deployDiun', GradleBuild) {
+    description = 'deploy diun image-watch stack'
+    group = "deploy stuff"
+    buildName = 'diun'
+    startParameter.projectProperties = ['svc':'diun']
+    tasks = ['deployService']
+}
+
+tasks.register('deployTraefik', GradleBuild) {
+    description = 'deploy traefik reverse proxy and create acme backup dir'
+    group = "deploy stuff"
+    buildName = 'traefik'
+    startParameter.projectProperties = ['svc':'traefik']
+    tasks = ['deployService']
+    doFirst {
+        ssh.run {
+            session(remotes.desktop) {
+                executeSudo 'mkdir -p /mnt/backup/docker/traefik'
+            }
+        }
+    }
+    doLast {
+        ssh.run {
+            session(remotes.desktop) {
+                executeSudo 'test ! -f /mnt/raid/services/nginx/docker-compose.yml || (cd /mnt/raid/services/nginx && docker compose down --remove-orphans -v)'
+                executeSudo 'docker rm -f nginx nginx-certbot || true'
+                executeSudo 'docker volume rm certbot_etc certbot_lib || true'
+                executeSudo 'docker image rm nginx:1.30.4-alpine-slim nginx:stable-alpine-slim certbot/dns-cloudflare:v5.8.0 certbot/dns-cloudflare:latest || true'
+                executeSudo 'rm -rf /mnt/raid/services/nginx'
+                executeSudo 'rm -f /etc/cron.d/docker_nginx_restart /mnt/raid/bin/cron/docker_nginx_restart.sh /mnt/raid/bin/service.sh'
+            }
+        }
+    }
+}
+
 tasks.register('deployMariadb', GradleBuild) {
-    description = 'deploy mariadb scripts'
+    description = 'deploy mariadb scripts (stack not in production yet)'
     group = "deploy stuff"
     buildName = 'mariadb'
     startParameter.projectProperties = ['svc':'mariadb']
@@ -191,21 +239,22 @@ tasks.register('deployAll') {
     dependsOn = ['deployVault',
         'deployJenkins',
         'deployGrafana',
-        'deployNginx',
         'deployNexus',
         'deployOpenhab',
         'deployPortainer',
         'deployRabbitmq',
         'deployRedis',
-        'deploySonarqube', 
+        'deploySonarqube',
         'deployUnifi',
         'deployUnifiOs',
         'deployUpsMon',
-        'deployWeather',
         'deployWiki',
         'deployObsidian',
         'deployVelxio',
         'deployTimescaledb',
-        'deployMariadb'
+        'deployGdrive',
+        'deployGotify',
+        'deployDiun',
+        'deployTraefik'
         ]
 }

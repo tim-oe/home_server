@@ -1,0 +1,10 @@
+# UniFi OS presents a self-signed cert on :443. ServersTransport cannot be set
+# via docker labels, so the unifi-os service references this as unifi@file.
+http:
+  serversTransports:
+    unifi:
+      insecureSkipVerify: true
+      forwardingTimeouts:
+        dialTimeout: 30s
+        responseHeaderTimeout: 600s
+        idleConnTimeout: 180s

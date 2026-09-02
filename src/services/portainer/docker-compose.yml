@@ -3,7 +3,7 @@
 # https://github.com/portainer
 services:
   portainer:
-    image: portainer/portainer-ce:latest
+    image: portainer/portainer-ce:2.45.0
     container_name: portainer
     hostname: "portainer"
     restart: "unless-stopped"
@@ -12,6 +12,11 @@ services:
     volumes:
       - portainer_data:/data
       - /var/run/docker.sock:/var/run/docker.sock
+    labels:
+      - traefik.enable=true
+      - traefik.http.routers.portainer.rule=Host(`portainer.tecronin.uk`)
+      - traefik.http.routers.portainer.entrypoints=websecure
+      - traefik.http.services.portainer.loadbalancer.server.port=9000
 volumes:
   portainer_data:
     name: portainer_data
