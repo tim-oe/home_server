@@ -1,63 +1,92 @@
 # https://grafana.com/docs/grafana/latest/setup-grafana/installation/docker/
-# https://github.com/jkehres/docker-compose-influxdb-grafana
-# https://ivanahuckova.medium.com/setting-up-influxdb-v2-flux-with-influxql-in-grafana-926599a19eeb
-# https://hub.docker.com/_/influxdb
 # https://hub.docker.com/r/grafana/grafana
-# https://observability-360.com/docs/ViewDocument?id=influxdb-and-grafana
+# Dashboards, datasources, and alert rules are git-tracked under ./provisioning
+# and ./dashboards (copied to /mnt/raid/services/grafana by deployGrafana).
+---
 services:
-  influxdb:
-    image: influxdb:2.7.11
-    container_name: "influxdb"
-    hostname: "influxdb"
-    restart: "unless-stopped"
-    ports:
-      - '8086:8086'
-    volumes:
-      - influxdb-data:/var/lib/influxdb
-      - influxdb-data2:/var/lib/influxdb2
-      - influxdb-conf:/etc/influxdb2
-      # sync local TZ and time
-      - /etc/timezone:/etc/timezone:ro
-      - /etc/localtime:/etc/localtime:ro
-    environment:
-      - INFLUXDB_DB=pimonitor
-      - INFLUXDB_ADMIN_USER=${INFLUXDB_USERNAME}
-      - INFLUXDB_ADMIN_PASSWORD=${INFLUXDB_PASSWORD}
   grafana:
     image: grafana/grafana:11.6.1
-    container_name: "grafana"
-    hostname: "grafana"
-    restart: "unless-stopped"
+    container_name: grafana
+    hostname: grafana
+    restart: unless-stopped
     ports:
-      - '3000:3000'
+      - "3000:3000"
     volumes:
       - grafana-data:/var/lib/grafana
-      - grafana-provisioning:/etc/grafana/provisioning
-      # sync local TZ and time
+      - ./provisioning:/etc/grafana/provisioning:ro
+      - ./dashboards:/var/lib/grafana/dashboards:ro
       - /etc/timezone:/etc/timezone:ro
       - /etc/localtime:/etc/localtime:ro
-    depends_on:
-      - influxdb
     environment:
       - GF_SECURITY_ADMIN_USER=${GRAFANA_USERNAME}
       - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_PASSWORD}
       - GF_SECURITY_CSRF_TRUSTED_ORIGINS=${GRAFANA_DOMAIN}
+      - GF_SERVER_ROOT_URL=https://${GRAFANA_DOMAIN}
+      # SQLite under unified alerting; WAL + retries so provisioning is not
+      # killed by a single lock from first-boot plugin installs.
+      - GF_DATABASE_WAL=true
+      - GF_DATABASE_QUERY_RETRIES=10
+      - GF_DATABASE_TRANSACTION_RETRIES=10
+      # 11.x preinstalls Loki/Pyroscope Explore apps on first boot; those
+      # downloads lock sqlite and fail datasource provisioning.
+      - GF_PLUGINS_PREINSTALL_DISABLED=true
+      # contactpoints.yml interpolates this at provision time
+      - GOTIFY_TOKEN=${GOTIFY_TOKEN:?set GOTIFY_TOKEN in .env}
     labels:
+      # Unique value so wiki/gotify/traefik backups do not docker-stop this container.
+      # Offen matches this against BACKUP_STOP_CONTAINER_LABEL on the sidecar.
+      - docker-volume-backup.stop-during-backup=grafana
       - traefik.enable=true
       - traefik.http.routers.grafana.rule=Host(`grafana.tecronin.uk`)
       - traefik.http.routers.grafana.entrypoints=websecure
       - traefik.http.services.grafana.loadbalancer.server.port=3000
+  backup:
+    # https://github.com/offen/docker-volume-backup/
+    image: offen/docker-volume-backup:v2.48.2
+    container_name: grafana-backup
+    restart: always
+    environment:
+      EXEC_LABEL: grafana
+      BACKUP_STOP_CONTAINER_LABEL: grafana
+      BACKUP_CRON_EXPRESSION: "35 01 * * *"
+      BACKUP_FILENAME: backup-%Y-%m-%dT%H-%M-%S.tar.gz
+      BACKUP_PRUNING_PREFIX: backup-
+      BACKUP_RETENTION_DAYS: 7
+    volumes:
+      - /etc/timezone:/etc/timezone:ro
+      - /etc/localtime:/etc/localtime:ro
+      - grafana-data:/backup:ro
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - /mnt/backup/docker/grafana:/archive
+    labels:
+      - diun.enable=false
+  gdrive:
+    image: rclone/rclone:1.75.0
+    container_name: grafana-gdrive
+    restart: unless-stopped
+    # alpine busybox sleep has no infinity; idle until offen execs prune-post
+    entrypoint: ["tail", "-f", "/dev/null"]
+    env_file:
+      - path: /etc/environment
+        required: false
+    environment:
+      PATH: /usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+      RCLONE_SRC: /archive
+      RCLONE_DEST: gdrive:/backup/services/grafana
+      GOTIFY_URL: http://gotify
+    volumes:
+      - /etc/timezone:/etc/timezone:ro
+      - /etc/localtime:/etc/localtime:ro
+      - /root/.config/rclone/rclone.conf:/config/rclone/rclone.conf:ro
+      - /mnt/backup/docker/grafana:/archive:ro
+      - ./_common/rclone-sync.sh:/rclone-sync.sh:ro
+    labels:
+      - docker-volume-backup.exec-label=grafana
+      - docker-volume-backup.prune-post=/bin/sh /rclone-sync.sh
+      - diun.enable=false
 volumes:
-  influxdb-data:
-    name: influxdb-data
-  influxdb-data2:
-    name: influxdb-data2
-  influxdb-conf:
-    name: influxdb-conf
   grafana-data:
     name: grafana-data
-  grafana-provisioning:
-    name: grafana-provisioning
 networks:
   default:
     external: true

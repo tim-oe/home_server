@@ -60,11 +60,12 @@ never deployed.
 | [jenkins](https://www.jenkins.io/) | `jenkins.tecronin.uk` | host `:8088`, container `8080` |
 | [nexus](https://www.sonatype.com/products/nexus-repository) | `nexus.tecronin.uk` | `8081`, docker registry on `8082` |
 | [sonarqube](https://www.sonarqube.org/) | `sonarqube.tecronin.uk` | with its own postgres |
-| [grafana](https://grafana.com/) + [influxdb](https://www.influxdata.com/) | `grafana.tecronin.uk` | one stack; influxdb is intentionally not routed |
+| [grafana](https://grafana.com/) | `grafana.tecronin.uk` | dashboards and alerts; Prometheus datasource |
+| [prometheus](https://prometheus.io/) | `prometheus.tecronin.uk` | LAN-only; node_exporter + cAdvisor + Traefik metrics, see [its README](src/services/prometheus/README.md) |
 | [unifi OS Server](https://github.com/lemker/unifi-os-server) | `unifi.tecronin.uk` | [self-hosting UniFi](https://help.ui.com/hc/en-us/articles/34210126298775-Self-Hosting-UniFi), see [its README](src/services/unifi-os/README.md) |
 | [vaultwarden](https://github.com/dani-garcia/vaultwarden) | `vaultwarden.tecronin.uk` | LAN-only |
 | [wiki](https://www.bookstackapp.com/) | `wiki.tecronin.uk` | BookStack plus its own MariaDB |
-| [gotify](https://gotify.net/) | `gotify.tecronin.uk` | notification target for backup failures and image alerts |
+| [gotify](https://gotify.net/) | `gotify.tecronin.uk` | notification target for backup failures, image alerts, and Grafana resource alerts |
 | [DIUN](https://crazymax.dev/diun/) | — | notify-only image watch |
 | [portainer](https://www.portainer.io/) | `portainer.tecronin.uk` | |
 | [obsidian-remote](https://github.com/sytone/obsidian-remote) | `obsidian.tecronin.uk` | |
@@ -101,7 +102,7 @@ Three tiers, in the order data moves: named volume → NAS → Google Drive.
 ### Volume archives to the NAS
 
 Stacks holding data that cannot be rebuilt run an [offen/docker-volume-backup](https://github.com/offen/docker-volume-backup/)
-sidecar: **vaultwarden, unifi-os, wiki, gotify, traefik** (plus mariadb, deferred, and the
+sidecar: **vaultwarden, unifi-os, wiki, gotify, traefik, grafana** (plus mariadb, deferred, and the
 deprecated unifi stack). Each sidecar has its own cron, writes a timestamped `.tar.gz` into
 `/mnt/backup/docker/<svc>`, and prunes it to `BACKUP_RETENTION_DAYS: 7` by matching
 `BACKUP_PRUNING_PREFIX`.
@@ -119,6 +120,7 @@ Two conventions matter:
 | vaultwarden | `vaultwarden-storage` | 01:05 |
 | unifi-os | six `unifi-os-*` volumes (`var-log` excluded) | 01:15 |
 | mariadb | `mariadb-dumps` | 01:25 |
+| grafana | `grafana-data` | 01:35 |
 | gotify | `gotify-data` | 01:45 |
 | traefik | `traefik-acme` | 01:50 |
 | wiki | `mariadb_data`, `bookstack_config` | 02:00 |
@@ -149,6 +151,7 @@ to Gotify on a non-zero exit.
 | `/mnt/backup/docker/vaultwarden` | `gdrive:/backup/services/vault` |
 | `/mnt/backup/docker/unifi-os` | `gdrive:/backup/services/unifi-os` |
 | `/mnt/backup/docker/gotify` | `gdrive:/backup/services/gotify` |
+| `/mnt/backup/docker/grafana` | `gdrive:/backup/services/grafana` |
 | `/mnt/backup/docker/traefik` | `gdrive:/backup/services/traefik` |
 | `/mnt/backup/docker/wiki` | `gdrive:/backup/docker/wiki` |
 | `/mnt/backup/docker/services` | `gdrive:/backup/docker/services` |
@@ -162,9 +165,10 @@ read-only into each sidecar.
 `services_backup.sh` runs from `/etc/cron.d/service_backup_cron` at 08:00 and zips
 `/mnt/raid/services` plus `/etc/environment` to `/mnt/backup/docker/services/svc-<date>.zip`,
 keeping 15 days. That zip is the recovery path for every stack without a volume sidecar: jenkins,
-nexus, grafana/influxdb, sonarqube, openhab, portainer, obsidian, velxio, redis, rabbitmq, and
-timescaledb keep state in named volumes that are deliberately **not** archived, on the basis that
-they can be rebuilt from compose plus that config.
+nexus, sonarqube, openhab, portainer, obsidian, velxio, redis, rabbitmq, timescaledb, and
+prometheus keep state in named volumes that are deliberately **not** archived, on the basis that
+they can be rebuilt from compose plus that config. Grafana's volume is archived; its dashboards
+and alert rules also live in git under `src/services/grafana/`.
 
 The last two rows of the table above have no offen instance to hang a `prune-post` on, so
 `src/services/gdrive/` covers them with a busybox `crond` at 08:15. It replaced the old host rclone
@@ -178,15 +182,22 @@ cron and the `/opt/rclone` install.
 
 ## Notifications
 
-[Gotify](https://gotify.net/) is the single notification target: rclone failures and DIUN image
-alerts. Tokens live in the **host's** `/etc/environment`, which compose injects into the rclone
-sidecars and DIUN via `env_file`. After Gotify's first boot, create two applications in its UI and
-add:
+[Gotify](https://gotify.net/) is the single notification target: rclone failures, DIUN image
+alerts, and Grafana resource alerts. Tokens live in the **host's** `/etc/environment`, which
+compose injects into the rclone sidecars and DIUN via `env_file`, except Grafana's alert token
+which lives in `/mnt/raid/services/grafana/.env` so it can be rotated without touching the host
+file. After Gotify's first boot, create three applications in its UI and add:
 
 ```
 GOTIFY_DEFAULTUSER_PASS=<admin-password>
 GOTIFY_APP_TOKEN=<rclone-app-token>
 DIUN_NOTIF_GOTIFY_TOKEN=<diun-app-token>
+```
+
+and, in the grafana stack `.env` only:
+
+```
+GOTIFY_TOKEN=<grafana-alert-app-token>
 ```
 
 Then `sudo docker compose up -d` those stacks so the containers pick it up. A stack `.env` next to
@@ -216,7 +227,6 @@ alerts once — from `vaultwarden-backup` and `gdrive-sync` respectively.
 - [letsencrypt certs](https://www.truenas.com/docs/scale/scaletutorials/credentials/certificates/settingupletsencryptcertificates/)
 
 ## TODO
-- container monitoring dashboard — see [`.cursor/plan/prometheus-monitoring-stack.md`](.cursor/plan/prometheus-monitoring-stack.md)
 - move the weather database into `src/services/mariadb` — see [`.cursor/plan/weather-mariadb-migration.md`](.cursor/plan/weather-mariadb-migration.md)
 - custom container from nexus
 - [multi volume backup](https://offen.github.io/docker-volume-backup/recipes/#running-multiple-instances-in-the-same-setup)

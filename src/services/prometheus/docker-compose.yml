@@ -1,0 +1,72 @@
+# https://prometheus.io/docs/prometheus/latest/installation/#using-docker
+# https://github.com/prometheus/node_exporter#using-docker
+# https://github.com/google/cadvisor
+---
+services:
+  prometheus:
+    image: prom/prometheus:v3.6.0
+    container_name: prometheus
+    hostname: prometheus
+    restart: unless-stopped
+    command:
+      - --config.file=/etc/prometheus/prometheus.yml
+      - --storage.tsdb.path=/prometheus
+      - --storage.tsdb.retention.time=90d
+      - --storage.tsdb.retention.size=15GB
+      - --web.enable-lifecycle
+    volumes:
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus-data:/prometheus
+      - /etc/timezone:/etc/timezone:ro
+      - /etc/localtime:/etc/localtime:ro
+    # Unbound on OPNsense. Docker's 127.0.0.11 does not resolve LAN DHCP names,
+    # so tec-kvm.localdomain / tec-weather.localdomain would miss.
+    dns:
+      - 192.168.1.1
+    labels:
+      - traefik.enable=true
+      - traefik.http.routers.prometheus.rule=Host(`prometheus.tecronin.uk`)
+      - traefik.http.routers.prometheus.entrypoints=websecure
+      - traefik.http.routers.prometheus.middlewares=lan-only@file
+      - traefik.http.services.prometheus.loadbalancer.server.port=9090
+  node-exporter:
+    image: prom/node-exporter:v1.9.1
+    container_name: node-exporter
+    restart: unless-stopped
+    command:
+      - --path.rootfs=/host
+    # Host networking cannot join share-net. Prometheus scrapes
+    # tec-desktop.localdomain:9100 instead.
+    network_mode: host
+    pid: host
+    volumes:
+      - /:/host:ro,rslave
+      - /etc/timezone:/etc/timezone:ro
+      - /etc/localtime:/etc/localtime:ro
+  cadvisor:
+    # gcr.io stopped publishing at v0.52; v0.53+ is ghcr.io/google/cadvisor
+    image: ghcr.io/google/cadvisor:v0.60.5
+    container_name: cadvisor
+    hostname: cadvisor
+    restart: unless-stopped
+    privileged: true
+    command:
+      - --docker_only=true
+      - --housekeeping_interval=30s
+    volumes:
+      - /:/rootfs:ro
+      - /var/run:/var/run:ro
+      - /sys:/sys:ro
+      - /var/lib/docker/:/var/lib/docker:ro
+      - /dev/disk/:/dev/disk:ro
+      - /etc/timezone:/etc/timezone:ro
+      - /etc/localtime:/etc/localtime:ro
+    devices:
+      - /dev/kmsg
+volumes:
+  prometheus-data:
+    name: prometheus-data
+networks:
+  default:
+    external: true
+    name: share-net

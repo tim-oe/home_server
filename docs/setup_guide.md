@@ -73,7 +73,8 @@ Each stack is `src/services/<svc>/`. `./gradlew deploy<Svc>` copies the files to
    - SonarQube (`src/services/sonarqube/`)
 
 2. **Monitoring Stack**
-   - Grafana and InfluxDB, one stack (`src/services/grafana/`)
+   - Grafana (`src/services/grafana/`) with Prometheus datasource, git-tracked dashboards and alerts
+   - Prometheus, node_exporter, and cAdvisor (`src/services/prometheus/`)
 
 3. **Network Services**
    - Traefik reverse proxy (`src/services/traefik/`)
@@ -84,7 +85,7 @@ Each stack is `src/services/<svc>/`. `./gradlew deploy<Svc>` copies the files to
 1. **Local Backup Setup**
    Backups are per stack, not central. The `offen/docker-volume-backup` and `rclone` sidecars live
    in the same `docker-compose.yml` as the service they protect (`vaultwarden`, `unifi-os`, `wiki`,
-   `gotify`, `traefik`), so there is nothing separate to deploy.
+   `gotify`, `traefik`, `grafana`), so there is nothing separate to deploy.
    ```bash
    # archive target on the NAS, created by the deploy task
    ls -l /mnt/backup/docker/vaultwarden

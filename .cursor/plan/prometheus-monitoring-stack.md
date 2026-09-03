@@ -77,7 +77,7 @@ flowchart LR
   subgraph hosts ["Other hosts"]
     kvm["tec-kvm :9100"]
     weather["tec-weather :9100"]
-    opn["opnsense os-node_exporter :9100"]
+    opn["fort-apache os-node_exporter :9100"]
   end
   nodeExp --> prom
   cadvisor --> prom
@@ -128,7 +128,7 @@ datasources:
 - `prom/node-exporter:v1.9.1` with `network_mode: host`, `pid: host`, `/:/host:ro,rslave`, and
   `--path.rootfs=/host`. Host networking is what makes network and filesystem metrics correct, and it means
   every machine in the estate is scraped uniformly at `<hostname>:9100`.
-- `gcr.io/cadvisor/cadvisor:v0.53.0` with `--docker_only=true --housekeeping_interval=30s`, unpublished,
+- `ghcr.io/google/cadvisor:v0.60.5` with `--docker_only=true --housekeeping_interval=30s`, unpublished,
   scraped internally at `cadvisor:8080`.
 
 30s scrape rather than 15s. cAdvisor across ~25 containers plus Node Exporter Full is most of the cardinality,
@@ -145,8 +145,8 @@ scrape_configs:
         labels: {host: tec-kvm}
       - targets: ['tec-weather.localdomain:9100']
         labels: {host: tec-weather}
-      - targets: ['opnsense.localdomain:9100']
-        labels: {host: opnsense}
+      - targets: ['fort-apache.localdomain:9100']
+        labels: {host: fort-apache}
   - job_name: cadvisor
     static_configs:
       - targets: ['cadvisor:8080']
@@ -248,43 +248,40 @@ variable that must be rewritten to the fixed `prometheus` UID, otherwise every p
 
 ## Agents on the other hosts
 
-- **tec-kvm, tec-weather**: `apt install prometheus-node-exporter` sets up the systemd unit on 9100
-  automatically. The gradle `remotes` block only defines `desktop`, so unless these hosts already have the
-  `ansible` user and key this is a documented manual step rather than a new deploy task.
-- **opnsense**: install the `os-node_exporter` plugin from System, Firmware, Plugins, then add a firewall rule
-  allowing 9100 from the LAN. No shell access needed.
-- **tec-pi-mgr (PiKVM)**: optional. Requires `rw`, then `pacman -S prometheus-node-exporter`, then `ro`.
-- **UPS**: optional `ghcr.io/druggeri/nut_exporter` against the two `upsd` instances at
-  `tec-desktop.localdomain:3493` and `tec-pi-mgr.localdomain:3493` that
-  [`src/services/upsmon/docker-compose.yml`](../../src/services/upsmon/docker-compose.yml) already talks to.
-  Power events are a common root cause of the spikes worth alerting on.
-- **UniFi**: optional `ghcr.io/unpoller/unpoller` for AP, switch, and client metrics.
+- **tec-weather**: `apt install prometheus-node-exporter` (piImage `common/node_exporter`).
+- **tec-kvm (PiKVM)**: `rw`, `pacman -S prometheus-node-exporter`, `systemctl enable --now prometheus-node-exporter`, `ro`.
+- **fort-apache (OPNsense)**: `os-node_exporter` plugin, enable under Services > Node Exporter, LAN rule for 9100.
+- **UPS**: follow-on [`ups-monitoring.md`](ups-monitoring.md) — `nut_exporter` against the two `upsd`
+  instances that [`src/services/upsmon`](../../src/services/upsmon/docker-compose.yml) already talks to.
+- **UniFi**: follow-on [`unifi-os-monitoring.md`](unifi-os-monitoring.md) — `unpoller` against UniFi OS Server
+  for AP, switch, and client metrics.
 
 ## Task list
 
 - [x] During overhaul Phase 3, skip the `influxdb.tecronin.uk` Traefik router. During Phase 4, skip backup
   sidecars for `influxdb-data`, `influxdb-data2`, and `influxdb-conf`.
-- [ ] Remove the `influxdb` service and its three volumes from the grafana stack, and drop any leftover
+- [x] Remove the `influxdb` service and its three volumes from the grafana stack, and drop any leftover
   influxdb Traefik labels.
-- [ ] Switch `grafana-provisioning` from a named volume to a git-tracked `./provisioning` bind mount, and add
+- [x] Switch `grafana-provisioning` from a named volume to a git-tracked `./provisioning` bind mount, and add
   `./dashboards`.
-- [ ] Provision the Prometheus datasource with fixed uid `prometheus`.
-- [ ] Add `src/services/prometheus` with pinned prometheus, node-exporter, and cAdvisor, `prometheus.yml` with
+- [x] Provision the Prometheus datasource with fixed uid `prometheus`.
+- [x] Add `src/services/prometheus` with pinned prometheus, node-exporter, and cAdvisor, `prometheus.yml` with
   the node, cadvisor, and traefik jobs at 30s, 90d/15GB retention, Traefik labels using `lan-only@file`, and a
   `deployPrometheus` gradle task added to `deployAll`.
-- [ ] Enable the Prometheus metrics endpoint in the Traefik static config on an unpublished `metrics`
+- [x] Enable the Prometheus metrics endpoint in the Traefik static config on an unpublished `metrics`
   entrypoint.
-- [ ] Provision the Gotify contact point and notification policy, reading the token from the host `.env` via
-  `$__env{GOTIFY_TOKEN}`.
-- [ ] Provision the nine alert rules, with `for:` durations chosen so the Phase 4 backup stop windows do not
+- [x] Provision the Gotify contact point and notification policy, reading the token from the host `.env` via
+  `$GOTIFY_TOKEN` (alerting file provisioning interpolates `$VAR` from the container environment).
+- [x] Provision the nine alert rules, with `for:` durations chosen so the Phase 4 backup stop windows do not
   trigger them.
-- [ ] Commit Node Exporter Full, cAdvisor, and Traefik dashboard JSON with `${DS_PROMETHEUS}` rewritten to the
+- [x] Commit Node Exporter Full, cAdvisor, and Traefik dashboard JSON with `${DS_PROMETHEUS}` rewritten to the
   fixed datasource uid, plus the file-based dashboard provider.
-- [ ] Install node_exporter on tec-kvm and tec-weather, enable `os-node_exporter` on opnsense with a LAN
-  firewall rule, and document the whole inventory in `src/services/prometheus/README.md`.
-- [ ] Optional: `nut_exporter` for the two upsd instances, `unpoller` for UniFi.
-- [ ] Confirm `grafana-data` has an offen sidecar from Phase 4; leave the Prometheus TSDB unbacked, since it is
-  regenerable and large.
-- [ ] Update `README.md`, `docs/project_overview.md`, and `docs/service_configuration.md` to drop the
+- [x] Document node_exporter on tec-kvm / tec-weather / OPNsense in `src/services/prometheus/README.md`.
+  Install is a host-side manual step (gradle remotes only define `desktop`).
+- [ ] Follow-on: [`ups-monitoring.md`](ups-monitoring.md) — `nut_exporter` for the two `upsd` instances.
+- [ ] Follow-on: [`unifi-os-monitoring.md`](unifi-os-monitoring.md) — `unpoller` for UniFi OS Server.
+- [x] Confirm `grafana-data` has an offen sidecar from Phase 4; leave the Prometheus TSDB unbacked, since it is
+  regenerable and large. Phase 4 skipped grafana; the sidecar is in the grafana stack now.
+- [x] Update `README.md`, `docs/project_overview.md`, and `docs/service_configuration.md` to drop the
   Telegraf/InfluxDB pipeline description. Note that `service_configuration.md` also documents paths like
   `src/services/monitoring/grafana/` that do not exist.

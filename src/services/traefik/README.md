@@ -13,6 +13,7 @@ Access: `https://<svc>.tecronin.uk`. HTTP on :80 redirects to HTTPS.
 | `nexus.tecronin.uk` | nexus:8081 | labels |
 | `jenkins.tecronin.uk` | jenkins:8080 | labels |
 | `grafana.tecronin.uk` | grafana:3000 | labels |
+| `prometheus.tecronin.uk` | prometheus:9090 | labels + `lan-only@file` |
 | `sonarqube.tecronin.uk` | sonarqube:9000 | labels |
 | `portainer.tecronin.uk` | portainer:9000 | labels |
 | `obsidian.tecronin.uk` | obsidian:8080 | labels |
@@ -27,7 +28,7 @@ Access: `https://<svc>.tecronin.uk`. HTTP on :80 redirects to HTTPS.
 | `unifi.tecronin.uk` | unifi-os-server:443 (https) | labels + `unifi@file` + `lan-only@file` |
 | `weather.tecronin.uk` | tec-weather.localdomain:8000 (WeatherWatch) | file provider |
 
-`influxdb.tecronin.uk` is intentionally not routed (metrics stay on the LAN port).
+`prometheus.tecronin.uk` is LAN-only. Prometheus has no authentication of its own.
 The deprecated `unifi` stack is not routed; `unifi.tecronin.uk` is UniFi OS Server.
 
 velxio's Host override is a label, not a file exception — the
@@ -43,7 +44,7 @@ Labels cannot express these, so they live in `dynamic/`, loaded by the
 with `watch: true` — edits apply without restarting Traefik. Syntax:
 [file routing configuration](https://doc.traefik.io/traefik/v3.7/reference/routing-configuration/other-providers/file/).
 
-- **`middlewares.yml`** — `lan-only` [`ipAllowList`](https://doc.traefik.io/traefik/v3.7/reference/routing-configuration/http/middlewares/ipallowlist/) for vaultwarden and unifi-os (`192.168.1.0/24`, `10.9.0.0/24`). Traefik v3 renamed this from v2's `ipWhiteList`.
+- **`middlewares.yml`** — `lan-only` [`ipAllowList`](https://doc.traefik.io/traefik/v3.7/reference/routing-configuration/http/middlewares/ipallowlist/) for vaultwarden, unifi-os, and prometheus (`192.168.1.0/24`, `10.9.0.0/24`). Traefik v3 renamed this from v2's `ipWhiteList`.
 - **`transports.yml`** — `unifi` [ServersTransport](https://doc.traefik.io/traefik/v3.7/reference/routing-configuration/http/load-balancing/serverstransport/) with `insecureSkipVerify` and 600s restore timeouts. Referenced as `traefik.http.services.unifi-os.loadbalancer.serverstransport=unifi@file`. This is the one thing that *cannot* be set from docker labels.
 - **`external.yml`** — WeatherWatch on `tec-weather.localdomain:8000`, not a container on `share-net`.
   Traefik uses OPNsense (`dns: 192.168.1.1`) so that LAN name does not loop back to this host
@@ -95,13 +96,14 @@ which is watched. Full option list:
 
 | Setting | What it does here |
 |---|---|
-| [`entryPoints`](https://doc.traefik.io/traefik/v3.7/reference/install-configuration/entrypoints/) | `web` :80 redirects to `websecure` :443 |
+| [`entryPoints`](https://doc.traefik.io/traefik/v3.7/reference/install-configuration/entrypoints/) | `web` :80 redirects to `websecure` :443; `metrics` :8082 is unpublished and used for `/ping` plus Prometheus metrics |
 | [`entryPoints.websecure.http.tls`](https://doc.traefik.io/traefik/v3.7/reference/routing-configuration/http/tls/tls-certificates/) | the `tecronin.uk` + `*.tecronin.uk` wildcard is set on the entrypoint, so one cert covers every route and no router carries TLS labels |
 | [`certificatesResolvers.cloudflare.acme`](https://doc.traefik.io/traefik/v3.7/reference/install-configuration/tls/certificate-resolvers/acme/) | DNS-01 challenge, stored in `/letsencrypt/acme.json`. Provider credentials are [lego's Cloudflare env vars](https://go-acme.github.io/lego/dns/cloudflare/) — `CF_DNS_API_TOKEN` from `.env` |
 | [`providers.docker`](https://doc.traefik.io/traefik/v3.7/reference/install-configuration/providers/docker/) | `exposedByDefault: false` so nothing is routed by accident; `network: share-net` picks the right container IP |
 | [`providers.file`](https://doc.traefik.io/traefik/v3.7/reference/install-configuration/providers/others/file/) | `directory: /dynamic`, `watch: true` |
 | [`api.dashboard`](https://doc.traefik.io/traefik/v3.7/reference/install-configuration/api-dashboard/) | built but with `insecure: false` and no router, so it is not reachable |
-| [`ping`](https://doc.traefik.io/traefik/v3.7/reference/install-configuration/observability/healthcheck/) | `/ping` on :8082, which the compose healthcheck calls |
+| [`ping`](https://doc.traefik.io/traefik/v3.7/reference/install-configuration/observability/healthcheck/) | `/ping` on the `metrics` entrypoint (:8082), which the compose healthcheck calls |
+| [`metrics.prometheus`](https://doc.traefik.io/traefik/v3.7/reference/install-configuration/observability/metrics/) | `/metrics` on the same unpublished entrypoint; Prometheus scrapes `traefik:8082` over share-net |
 | [`log`](https://doc.traefik.io/traefik/v3.7/reference/install-configuration/observability/logs-and-accesslogs/) | `INFO` to stdout; access logs are off |
 
 A bad label does not fail loudly the way `nginx -t` did — it silently drops the route. `docker logs

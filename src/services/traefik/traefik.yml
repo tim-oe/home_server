@@ -12,8 +12,17 @@ api:
   dashboard: true
   insecure: false
 
+# /ping and /metrics share the unpublished metrics entrypoint (:8082).
+# Prometheus scrapes it over share-net; the compose healthcheck uses /ping.
 ping:
-  entryPoint: ping
+  entryPoint: metrics
+
+metrics:
+  prometheus:
+    entryPoint: metrics
+    addEntryPointsLabels: true
+    addRoutersLabels: true
+    addServicesLabels: true
 
 entryPoints:
   web:
@@ -34,7 +43,7 @@ entryPoints:
           - main: tecronin.uk
             sans:
               - "*.tecronin.uk"
-  ping:
+  metrics:
     address: ":8082"
     http:
       aliasHeadersStrategy: delete

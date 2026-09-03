@@ -1,0 +1,15 @@
+# Grafana alerting interpolates $GOTIFY_TOKEN from the container environment
+# at provision time. The token is a dedicated Gotify application, separate
+# from DIUN's, so update notifications and alert notifications can be muted
+# independently. Create it in the Gotify UI and put it in this stack's .env.
+apiVersion: 1
+contactPoints:
+  - orgId: 1
+    name: gotify
+    receivers:
+      - uid: gotify-webhook
+        type: webhook
+        disableResolveMessage: false
+        settings:
+          url: http://gotify/message?token=$GOTIFY_TOKEN
+          httpMethod: POST

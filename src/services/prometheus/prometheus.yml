@@ -1,0 +1,32 @@
+# Scraped every 30s. Retention is 90d / 15GB (set on the prometheus command line).
+global:
+  scrape_interval: 30s
+  evaluation_interval: 30s
+
+scrape_configs:
+  - job_name: node
+    static_configs:
+      - targets: ["tec-desktop.localdomain:9100"]
+        labels:
+          host: tec-desktop
+      - targets: ["tec-kvm.localdomain:9100"]
+        labels:
+          host: tec-kvm
+      - targets: ["tec-weather.localdomain:9100"]
+        labels:
+          host: tec-weather
+      - targets: ["tec-pi-mgr.localdomain:9100"]
+        labels:
+          host: tec-pi-mgr
+      - targets: ["tec-time.localdomain:9100"]
+        labels:
+          host: tec-time
+      - targets: ["fort-apache.localdomain:9100"]
+        labels:
+          host: fort-apache
+  - job_name: cadvisor
+    static_configs:
+      - targets: ["cadvisor:8080"]
+  - job_name: traefik
+    static_configs:
+      - targets: ["traefik:8082"]

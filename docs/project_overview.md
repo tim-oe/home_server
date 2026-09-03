@@ -12,9 +12,9 @@ This project implements a comprehensive home lab cloud-like setup for developmen
    - SonarQube: Code quality and security analysis
 
 2. **Monitoring Stack**
-   - Grafana: Visualization and analytics
-   - InfluxDB: Time series database
-   - Telegraf: Server agent for collecting metrics
+   - Grafana: Visualization, provisioned dashboards, and alerting
+   - Prometheus: Time series scrape store (90d / 15 GB)
+   - node_exporter / cAdvisor: Host and container metrics
 
 3. **Network Management**
    - UniFi OS Server: Wireless Access Point management
@@ -96,19 +96,15 @@ home_server/
 - Specific directory permissions for service operations
 
 ## Planned Enhancements
-1. **Monitoring Improvements**
-   - Container monitoring dashboard
-   - Enhanced Grafana/Telegraf integration
-
-2. **Security Enhancements**
+1. **Security Enhancements**
    - Implementation of Authentik
    - SMTP relay setup
 
-3. **Network Services**
+2. **Network Services**
    - Pi-hole DNS management
    - Uptime-Kuma monitoring
 
-4. **Infrastructure Management**
+3. **Infrastructure Management**
    - Netbox implementation
    - RustDesk self-hosted solution
    - Speedtest-tracker integration

@@ -2,11 +2,8 @@
 #
 
 docker volume create --name "grafana-data" --label "com.docker.compose.project=grafana" --label "com.docker.compose.version=2.35.1" --label "com.docker.compose.volume=grafana-data"
-docker volume create --name "grafana-provisioning" --label "com.docker.compose.project=grafana" --label "com.docker.compose.version=2.35.1" --label "com.docker.compose.volume=grafana-provisioning"
 
-docker volume create --name "influxdb-data" --label "com.docker.compose.project=grafana" --label "com.docker.compose.version=2.35.1" --label "com.docker.compose.volume=influxdb-data"
-docker volume create --name "influxdb-data2" --label "com.docker.compose.project=grafana" --label "com.docker.compose.version=2.35.1" --label "com.docker.compose.volume=influxdb-data2"
-docker volume create --name "influxdb-conf" --label "com.docker.compose.project=grafana" --label "com.docker.compose.version=2.35.1" --label "com.docker.compose.volume=influxdb-conf"
+docker volume create --name "prometheus-data" --label "com.docker.compose.project=prometheus" --label "com.docker.compose.version=2.35.1" --label "com.docker.compose.volume=prometheus-data"
 
 docker volume create --name "jenkins-home" --label "com.docker.compose.project=jenkins" --label "com.docker.compose.version=2.35.1" --label "com.docker.compose.volume=jenkins-home"
 

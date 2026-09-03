@@ -13,11 +13,18 @@ tasks.register('deployService') {
 }
 
 tasks.register('deployGrafana', GradleBuild) {
-    description = 'deploy grafana scripts'
+    description = 'deploy grafana scripts and create backup dir'
     group = "deploy stuff"
     buildName = 'grafana'
     startParameter.projectProperties = ['svc':'grafana']
     tasks = ['deployService']
+    doFirst {
+        ssh.run {
+            session(remotes.desktop) {
+                executeSudo 'mkdir -p /mnt/backup/docker/grafana'
+            }
+        }
+    }
 }
 
 tasks.register('deployJenkins', GradleBuild) {
@@ -202,6 +209,14 @@ tasks.register('deployTraefik', GradleBuild) {
     }
 }
 
+tasks.register('deployPrometheus', GradleBuild) {
+    description = 'deploy prometheus, node-exporter, and cAdvisor'
+    group = "deploy stuff"
+    buildName = 'prometheus'
+    startParameter.projectProperties = ['svc':'prometheus']
+    tasks = ['deployService']
+}
+
 tasks.register('deployMariadb', GradleBuild) {
     description = 'deploy mariadb scripts (stack not in production yet)'
     group = "deploy stuff"
@@ -236,6 +251,7 @@ tasks.register('deployAll') {
         'deployGdrive',
         'deployGotify',
         'deployDiun',
-        'deployTraefik'
+        'deployTraefik',
+        'deployPrometheus'
         ]
 }

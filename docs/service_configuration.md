@@ -35,28 +35,26 @@
 ## Monitoring Stack
 
 ### Grafana
-- **Purpose**: Visualization and analytics
-- **Configuration Location**: `src/services/grafana/`
+- **Purpose**: Visualization, git-tracked dashboards, and unified alerting
+- **Configuration Location**: `src/services/grafana/` — `provisioning/` and `dashboards/` are bind-mounted
 - **Default Port**: 3000
 - **Configuration Steps**:
-  1. Data source configuration
-  2. Dashboard import/setup
-  3. Alert configuration
-  4. User management
+  1. Stack `.env` on the host: `GRAFANA_USERNAME`, `GRAFANA_PASSWORD`, `GRAFANA_DOMAIN`, `GOTIFY_TOKEN`
+  2. Datasource, dashboards, contact point, and alert rules are provisioned from this repo
+  3. Create a dedicated Gotify application for alerts (not DIUN's) and put its token in `.env`
 
-### InfluxDB
-- **Purpose**: Time series database
-- **Configuration Location**: `src/services/grafana/` (same stack as Grafana)
-- **Default Port**: 8086, LAN only — deliberately not routed through Traefik
+### Prometheus
+- **Purpose**: Time series scrape store for hosts, containers, and Traefik
+- **Configuration Location**: `src/services/prometheus/` — see [its README](../src/services/prometheus/README.md)
+- **Default Port**: 9090 inside the container, LAN-only via Traefik (`prometheus.tecronin.uk`)
 - **Configuration Steps**:
-  1. Database creation
-  2. Retention policy setup
-  3. User access configuration
-  4. Backup configuration
+  1. `prometheus.yml` lists scrape targets; adding a host is a new static_config line
+  2. Retention is 90 days / 15 GB, scrape interval 30s
+  3. Native node_exporter on Debian hosts is [piImage `common/node_exporter`](https://github.com/tim-oe/piImage); tec-kvm is pacman on PiKVM; fort-apache is the OPNsense plugin
 
 ### Metrics collection
-Not deployed. Host and container metrics are still an open item — the current design work is in
-[`.cursor/plan/prometheus-monitoring-stack.md`](../.cursor/plan/prometheus-monitoring-stack.md).
+node_exporter on each host (`:9100`), cAdvisor for containers on tec-desktop, Traefik's unpublished
+`:8082` metrics entrypoint. No Telegraf, no InfluxDB.
 
 ## Network Management
 
@@ -110,7 +108,7 @@ TLS is no longer a separate service. Traefik's ACME resolver issues and renews t
 ### Docker Volume Backup
 - **Purpose**: Data persistence and backup
 - **Configuration Location**: per stack, not central — an `offen/docker-volume-backup` sidecar in
-  each of `vaultwarden`, `unifi-os`, `wiki`, `gotify`, `traefik` (and `mariadb`, deferred), paired
+  each of `vaultwarden`, `unifi-os`, `wiki`, `gotify`, `traefik`, `grafana` (and `mariadb`, deferred), paired
   with an `rclone` sidecar for the offsite push
 - **Configuration Steps**:
   1. Volume selection: mount it `:ro` under `/backup` in the sidecar
@@ -148,11 +146,18 @@ BACKUP_RETENTION_DAYS=7
 
 # Traefik (src/services/traefik/.env on the host)
 CF_DNS_API_TOKEN=your_cloudflare_dns_token
+
+# Grafana (src/services/grafana/.env on the host)
+GRAFANA_USERNAME=admin
+GRAFANA_PASSWORD=your_secure_password
+GRAFANA_DOMAIN=grafana.tecronin.uk
+GOTIFY_TOKEN=your_grafana_alert_app_token
 ```
 
 ### Host `/etc/environment`
 Injected into the rclone sidecars and DIUN via compose `env_file`, so notification tokens live in
-one place rather than per stack.
+one place rather than per stack. Grafana's alert token is an exception: it lives in
+`/mnt/raid/services/grafana/.env` (`GOTIFY_TOKEN`).
 ```bash
 GOTIFY_APP_TOKEN=your_rclone_app_token
 DIUN_NOTIF_GOTIFY_TOKEN=your_diun_app_token
@@ -160,10 +165,6 @@ DIUN_NOTIF_GOTIFY_TOKEN=your_diun_app_token
 
 ### Optional Environment Variables
 ```bash
-# Monitoring
-GRAFANA_ADMIN_PASSWORD=your_secure_password
-INFLUXDB_RETENTION=30d
-
 # Security
 FAIL2BAN_BANTIME=1h
 FAIL2BAN_FINDTIME=1h
@@ -183,9 +184,9 @@ graph TD
 ### Monitoring Pipeline
 ```mermaid
 graph TD
-    A[Telegraf] --> B[InfluxDB]
+    A[node_exporter / cAdvisor / Traefik] --> B[Prometheus]
     B --> C[Grafana]
-    C --> D[Alerts]
+    C --> D[Gotify]
     C --> E[Dashboards]
 ```
 
@@ -207,7 +208,8 @@ graph TD
 | Nexus | 8081 | HTTP | Repository Manager |
 | SonarQube | 9000 | HTTP | Code Analysis |
 | Grafana | 3000 | HTTP | Monitoring UI |
-| InfluxDB | 8086 | HTTP | Time Series DB |
+| Prometheus | 9090 | HTTP | Scrape store (Traefik, LAN-only; not published) |
+| node_exporter | 9100 | HTTP | Host metrics on each machine |
 | UniFi OS Server | 11443 | HTTPS | Controller UI |
 | Traefik | 80/443 | HTTP/HTTPS | Reverse Proxy |
 | Vaultwarden | 8860 | HTTP | Password Manager |
