@@ -1,6 +1,6 @@
 services:
   velxio:
-    image: ghcr.io/davidmonterocrespo24/velxio:master@sha256:4fb771cd9d2897d0ff3ccb0057445e3f942804e4cb11d01bc8d5266cff4a5fdb
+    image: ghcr.io/davidmonterocrespo24/velxio:master
     container_name: velxio
     hostname: velxio
     restart: unless-stopped
