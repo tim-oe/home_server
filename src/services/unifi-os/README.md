@@ -28,6 +28,8 @@ echo 'UOS_SYSTEM_IP=<lan-ip>' > /mnt/raid/services/unifi-os/.env
 
 Routing is Traefik labels on `unifi-os-server` (`unifi.tecronin.uk`, `lan-only@file`, `unifi@file` transport).
 
+After a restart the container is `health: starting` until Postgres, `unifi-core`, `unifi`, and `ulp-go` are all active (up to 15 minutes, longer if `ubnt-dpkg-restore` is unpacking a pending Network app upgrade). Traefik keeps the router during that window (`allowEmptyServices`); the UI 404s only if the labels never landed. Direct check while Core is still down: `https://<lan-ip>:11443`.
+
 ## Cutover
 
 Full runbook: [`.cursor/plan/unifi-os-server-migration.md`](../../../.cursor/plan/unifi-os-server-migration.md) Phase 3.

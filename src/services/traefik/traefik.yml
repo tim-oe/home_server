@@ -63,6 +63,10 @@ providers:
     endpoint: unix:///var/run/docker.sock
     exposedByDefault: false
     network: share-net
+    # Keep routers for containers whose Docker healthcheck is still
+    # starting/unhealthy (unifi-os start_period is 15m). Without this Traefik
+    # drops the route and the browser gets a 19-byte 404 until healthy.
+    allowEmptyServices: true
   file:
     directory: /dynamic
     watch: true

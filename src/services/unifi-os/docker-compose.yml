@@ -4,6 +4,9 @@
 ---
 services:
   unifi-os-server:
+    # TODO investigate images that tag UniFi OS Server itself (e.g. giiibates/unifi-os-server:5.1.37).
+    # lemker v1.x is their wrapper SemVer, not Network and not upstream UOS. Auto-update is UniFi OS,
+    # not the image; keep it off or Network still drifts on any of these.
     image: ghcr.io/lemker/unifi-os-server:v1.5.1
     container_name: unifi-os-server
     hostname: unifi.localdomain
