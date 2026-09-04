@@ -7,7 +7,12 @@ services:
     ports:
       - "3080:80"
     volumes:
+      # image VOLUME paths; unnamed mounts become anonymous hashes
       - velxio-data:/app/data
+      - velxio-arduino-libs:/root/.arduino15
+      - velxio-arduino-user-libs:/root/Arduino
+      - velxio-ccache:/var/cache/ccache
+      - velxio-build:/var/lib/velxio-build
       - /etc/timezone:/etc/timezone:ro
       - /etc/localtime:/etc/localtime:ro
     environment:
@@ -32,6 +37,14 @@ services:
 volumes:
   velxio-data:
     name: velxio-data
+  velxio-arduino-libs:
+    name: velxio-arduino-libs
+  velxio-arduino-user-libs:
+    name: velxio-arduino-user-libs
+  velxio-ccache:
+    name: velxio-ccache
+  velxio-build:
+    name: velxio-build
 
 networks:
   default:
