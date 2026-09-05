@@ -1,5 +1,15 @@
 # Weather MariaDB Migration
 
+> **Status: not started in the repo.** Verified 2026-09-05: `src/services/mariadb` is unchanged from its
+> never-deployed state — `deployMariadb` is still excluded from `deployAll`, `dump.sh` is unhardened, no
+> `mariadb-gdrive` sidecar, no README, `mariadb-data`/`mariadb-dumps` absent from `volumes.sh`. Phase 0
+> discovery is host-side and may have been partly done off-repo; nothing in Phases 1–4 has. Plan revised
+> `e20855c` and `beca00a`.
+> **Cross-plan dependency:** [`security-quick-wins.md`](security-quick-wins.md) item 5 and
+> [`vlan-segmentation.md`](vlan-segmentation.md) both assume this plan's outcome (tec-weather and piSolar
+> writing to `192.168.1.35:3306`). Do Phase 1's `host_ip` binding here rather than in quick-wins, so the
+> stack is bound to the LAN address from its first deploy.
+
 Move the MariaDB instance off the station host `tec-weather` and into the `src/services/mariadb` container on
 tec-desktop. WeatherWatch stays on the station and piSolar stays on its own Pi; both are repointed at the
 container over the LAN. This finishes the one task left open in

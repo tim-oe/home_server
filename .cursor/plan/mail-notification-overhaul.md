@@ -1,5 +1,16 @@
 # Mail and Notification Overhaul
 
+> **Status: not started.** Commit `4decdac` (2026-09-04) is titled "Implemented a comprehensive overhaul of
+> the mail and notification system" but changed only this plan file and `velxio/docker-compose.yml`.
+> Verified 2026-09-05: vaultwarden still carries all six `SMTP_*` lines and the Gmail wiki comment, the wiki
+> stack still has `MAIL_DRIVER: smtp` with the `SMTP_*` block, there is no `src/bin/cron/heartbeat.sh` or
+> `src/etc/cron.d/heartbeat_cron`, and `README.md` still lists the `postfix-relay` and `uptime-kuma` TODOs.
+> All sixteen tasks below are open.
+> **Sequencing note:** [`lan-only-default-routing.md`](lan-only-default-routing.md) now depends on this
+> plan's email path for the one alert that must not ride Gotify (DDNS drift while abroad). Have the
+> dead-man's-switch in place before that plan's step 4, which is where WireGuard becomes the only remote
+> route to the private services.
+
 Stop sending mail from the estate entirely, and fix notification reliability where it actually matters: an
 external dead-man's-switch so host and ISP outages reach a phone that is off the LAN, and Gotify hardened
 against Android Doze.

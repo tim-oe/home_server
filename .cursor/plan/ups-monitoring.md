@@ -1,5 +1,11 @@
 # UPS Monitoring
 
+> **Status: not started.** Verified 2026-09-05: no `nut_exporter` service in
+> `src/services/prometheus/docker-compose.yml`, no `nut` job in `prometheus.yml`, no UPS rules in
+> `grafana/provisioning/alerting/rules.yml`, no dashboard 19308. The parent plan's commit `b212641`
+> added this file, not the implementation. All seven tasks open. Prerequisite
+> ([`prometheus-monitoring-stack.md`](prometheus-monitoring-stack.md)) is complete, so this can start any time.
+
 Follow-on to [`prometheus-monitoring-stack.md`](prometheus-monitoring-stack.md). Prometheus and Grafana
 unified alerting already exist; this adds NUT metrics for the two UPS daemons that
 [`src/services/upsmon`](../../src/services/upsmon/docker-compose.yml) already polls.

@@ -1,5 +1,13 @@
 # Container Management Overhaul
 
+> **Status: implemented** — Phase 1–3 in `51865fe` (2026-08-25), rclone/gdrive follow-through in `70c7b45`
+> and `43a66fc` (2026-09-02). Verified 2026-09-05 against the repo: `traefik`, `diun`, `gotify`, `gdrive`
+> stacks present, nginx stack gone, `_common/rclone-sync.sh` in place.
+> **One task deliberately open:** the `src/services/mariadb` rclone sidecar and `deployMariadb` in
+> `deployAll`, deferred until that stack is in use. Owned by
+> [`weather-mariadb-migration.md`](weather-mariadb-migration.md) Phase 4, which ticks it here when done.
+> Phase 5 follow-on: [`prometheus-monitoring-stack.md`](prometheus-monitoring-stack.md), implemented.
+
 Standardize the offsite backup tier into per-stack rclone sidecars triggered by the existing offen backup
 lifecycle, add DIUN + Gotify for notify-only update tracking with every image tag pinned in git, and replace
 the nginx + certbot + `service.sh` stack with Traefik, moving routing into each service's compose labels.

@@ -1,5 +1,11 @@
 # UniFi OS Monitoring
 
+> **Status: not started.** Verified 2026-09-05: no `unpoller` service in
+> `src/services/prometheus/docker-compose.yml`, no `unpoller` job in `prometheus.yml`, no UniFi rules or
+> dashboards under `grafana/`. The parent plan's commit `b212641` added this file, not the implementation.
+> All eight tasks open. Prerequisites ([`prometheus-monitoring-stack.md`](prometheus-monitoring-stack.md),
+> [`unifi-os-server-migration.md`](unifi-os-server-migration.md)) are both complete.
+
 Follow-on to [`prometheus-monitoring-stack.md`](prometheus-monitoring-stack.md). Assumes UniFi OS Server is
 the live controller ([`unifi-os-server-migration.md`](unifi-os-server-migration.md)), not the EOL
 `jacobalberty/unifi` stack. Prometheus and Grafana unified alerting already exist; this adds AP, switch, and

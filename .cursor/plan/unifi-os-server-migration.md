@@ -1,5 +1,17 @@
 # UniFi OS Server Migration Plan
 
+> **Status: implemented** — `12f4d4b` (2026-08-16). Verified 2026-09-05: `src/services/unifi-os` is the
+> routed controller (`unifi.tecronin.uk` via Traefik with `lan-only@file`), `privileged: true` and the
+> `TimeoutStartSec=15min` drop-in from Open items are both in the compose file. Image is now `v1.5.1`, not
+> the `v1.4.0` this plan was written against.
+> **Superseded details:** nginx references below are historical; Traefik replaced it in
+> [`container-management-overhaul.md`](container-management-overhaul.md) Phase 3. The old `unifi` stack
+> kept "intact for rollback" is now scheduled for deletion by
+> [`security-quick-wins.md`](security-quick-wins.md) item 2 — the rollback window is closed.
+> **Still open:** the compose file still publishes `8882:8080` because APs have not been re-pointed to
+> `:8080` (`set-inform`); the compose comment marks it. Resolve alongside quick-wins item 5.
+> New-device adoption over bridge networking remains a watch item, not a defect.
+
 Replace the EOL `jacobalberty/unifi` controller with [lemker/unifi-os-server](https://github.com/lemker/unifi-os-server),
 deployed side-by-side as a new service so the existing stack and its volume stay intact for rollback.
 
