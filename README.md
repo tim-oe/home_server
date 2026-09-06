@@ -73,10 +73,9 @@ never deployed.
 | [velxio](https://github.com/davidmonterocrespo24/velxio) | `velxio.tecronin.uk` | esp32 dev, needs a `Host` override |
 | [nut_webgui](https://github.com/superioone/nut_webgui) | `upsdesktop.tecronin.uk`, `upspimgr.tecronin.uk` | UPS monitoring, one container per UPS |
 | [rabbitmq](https://www.rabbitmq.com/) | `mq.tecronin.uk` | management UI; AMQP and MQTT published on the LAN |
-| redis, timescaledb, mariadb | — | LAN-only datastores |
+| timescaledb, mariadb | — | LAN-only datastores |
 | gdrive | — | offsite sync for backup paths with no owning stack |
 | restorer | — | throwaway ubuntu shell for poking at volumes |
-| unifi | — | deprecated `jacobalberty/unifi`, kept until the OS Server migration is retired |
 
 `weather.tecronin.uk` is routed too, but its backend is WeatherWatch on `tec-weather`, not a
 container here.
@@ -102,8 +101,7 @@ Three tiers, in the order data moves: named volume → NAS → Google Drive.
 ### Volume archives to the NAS
 
 Stacks holding data that cannot be rebuilt run an [offen/docker-volume-backup](https://github.com/offen/docker-volume-backup/)
-sidecar: **vaultwarden, unifi-os, wiki, gotify, traefik, grafana** (plus mariadb, deferred, and the
-deprecated unifi stack). Each sidecar has its own cron, writes a timestamped `.tar.gz` into
+sidecar: **vaultwarden, unifi-os, wiki, gotify, traefik, grafana** (plus mariadb, deferred). Each sidecar has its own cron, writes a timestamped `.tar.gz` into
 `/mnt/backup/docker/<svc>`, and prunes it to `BACKUP_RETENTION_DAYS: 7` by matching
 `BACKUP_PRUNING_PREFIX`.
 
@@ -165,7 +163,7 @@ read-only into each sidecar.
 `services_backup.sh` runs from `/etc/cron.d/service_backup_cron` at 08:00 and zips
 `/mnt/raid/services` plus `/etc/environment` to `/mnt/backup/docker/services/svc-<date>.zip`,
 keeping 15 days. That zip is the recovery path for every stack without a volume sidecar: jenkins,
-nexus, sonarqube, openhab, portainer, obsidian, velxio, redis, rabbitmq, timescaledb, and
+nexus, sonarqube, openhab, portainer, obsidian, velxio, rabbitmq, timescaledb, and
 prometheus keep state in named volumes that are deliberately **not** archived, on the basis that
 they can be rebuilt from compose plus that config. Grafana's volume is archived; its dashboards
 and alert rules also live in git under `src/services/grafana/`.

@@ -19,11 +19,11 @@ DB passwords **in the database** before restarting the app.
 
 **Now (before routing):**
 
-- [ ] **1** NAS BMC — find it, dedicated mode, credentials, unplug if dedicated.
-- [ ] **2** Redis — delete stack (preferred) or bind+password; drop `deployRedis` and `deployUnifi`. **Gates 8443.**
-- [ ] **3** Jenkins — remove `privileged: true`, then `user: root`.
-- [ ] **4** SonarQube Postgres — unpublish 5432, rotate `sonar`/`sonar`.
-- [ ] **5** Wiki — drop `6875:80`, rotate DB passwords. **Gates `APP_PROXIES`.**
+- [x] **1** NAS BMC — find it, dedicated mode, credentials, unplug if dedicated.
+- [x] **2** Redis — delete stack (preferred) or bind+password; drop `deployRedis` and `deployUnifi`. **Gates 8443.**
+- [x] **3** Jenkins — remove `privileged: true`, then `user: root`.
+- [x] **4** SonarQube Postgres — unpublish 5432, rotate `sonar`/`sonar`.
+- [x] **5** Wiki — drop `6875:80`, rotate DB passwords. **Gates `APP_PROXIES`.**
 
 **Then** [`lan-only-default-routing.md`](lan-only-default-routing.md) to completion.
 
@@ -55,16 +55,35 @@ TrueNAS Mini X+ dedicated IPMI. Compromise is owning the box that holds every ba
 port-forward it. Permanent zone is Management in [`vlan-segmentation.md`](vlan-segmentation.md);
 house Clients may still reach TrueNAS *data*. BMC itself stays off IoT/Guest.
 
-- [ ] **1.1** Find address. **Do:** TrueNAS UI IPMI page, or `ipmitool lan print 1` on the NAS.
+- [x] **1.1** Find address. **Do:** TrueNAS UI IPMI page, or `ipmitool lan print 1` on the NAS.
   Confirm current NAS data IP (was `192.168.1.30` on 2026-09-05, not `.101`).
-- [ ] **1.2** Set BMC LAN mode to **dedicated** (not failover). Unplugging the cable does not prove
+  **Did (2026-09-06):** data is `192.168.1.30` (`tec-truenas` / `truenas.tecronin.uk`, MAC
+  `90:5a:08:98:1b:80`). BMC is `192.168.1.31` (`tec-truenas-ipmi`, MAC `90:5a:08:15:73:d7`).
+  Old `.101` is dead (no ARP). `tec-nas` does not resolve; mounts already use `tec-truenas`.
+  Dedicated cable was on OPNsense; recabled to **tec-sw-a Tw1/0/2**. Port was still
+  `shutdown` from Phase 2, so no link lights; BMC stayed reachable via **failover** (MAC
+  learned on Te1/0/10). **Did:** `no shutdown`, description `nas-ipmi`, PoE off, saved
+  startup+backup. Link up; MAC now on Tw1/0/2; `.31` pings.
+- [x] **1.2** Set BMC LAN mode to **dedicated** (not failover). Unplugging the cable does not prove
   it is off if failover is on.
-- [ ] **1.3** Verify from another host: `nmap` IPMI ports on both the BMC address and the NAS data
+  **Did (2026-09-06):** UI LAN Interface = dedicated. Wire check: `.31` has 80/443/623/5900; NAS
+  data `.30` has TrueNAS 80/443 only (no 623/5900). Earlier Te1/0/10 MAC was while Tw1/0/2 was
+  still `shutdown`.
+- [x] **1.3** Verify from another host: `nmap` IPMI ports on both the BMC address and the NAS data
   address (see Verification).
-- [ ] **1.4** Change credentials; store in Vaultwarden. Stock was `ADMIN`/`ADMIN` or a chassis sticker.
-- [ ] **1.5** Disable IPMI-over-LAN and virtual media if unused.
-- [ ] **1.6** If dedicated is confirmed: unplug the dedicated port until VLANs exist. Record what you
+  **Did (2026-09-06):** `nmap` from `tec-pi-mgr` (not tec-desktop). NAS data `.30`: 623/udp
+  **closed**, 664/udp closed, 623/tcp closed, 5900/tcp closed; 80/443 are TrueNAS. BMC `.31`:
+  623/udp **open** (RMCP), 5900/tcp open (KVM), 80/443 open, 664/udp closed. Dedicated holds.
+- [x] **1.4** Change credentials; store in Vaultwarden. Stock was `ADMIN`/`ADMIN` or a chassis sticker.
+  **Did (2026-09-06):** not factory; password stored in Vaultwarden.
+- [x] **1.5** Disable IPMI-over-LAN and virtual media if unused.
+  **Did (2026-09-06):** Virtual Media Port 623 **disabled** (TCP 623 / ISO; nmap closed). This ATEN
+  UI has **no RMCP enable/disable** under Users or Network — only an RMCP port number (leave 623).
+  UDP 623 stays open; that is accepted. KVM 5900 stays (web console).
+- [x] **1.6** If dedicated is confirmed: unplug the dedicated port until VLANs exist. Record what you
   set — nothing in this repo will remind you.
+  **Skipped unplug (2026-09-06):** dedicated cable is on **tec-sw-a Tw1/0/2** (future Management).
+  Do not unplug. Record: dedicated LAN mode; VM port off; RMCP 623; HTTPS Internal CA.
 
 ## 2. Unauthenticated Redis (and dead `unifi` stack)
 
@@ -72,12 +91,18 @@ house Clients may still reach TrueNAS *data*. BMC itself stays off IoT/Guest.
 `6379:6379` with no password. `CONFIG SET dir` + `SAVE` is a root path. `deployRedis` is in
 `deployAll`; nothing in the repo consumes it.
 
-- [ ] **2.1** `docker ps` and `ss -tnp | grep 6379`. If nothing is connected: **delete the stack** and
+- [x] **2.1** `docker ps` and `ss -tnp | grep 6379`. If nothing is connected: **delete the stack** and
   drop `deployRedis` from `deployAll`. That is the preferred fix.
+  **Did (2026-09-06):** nothing on 6379, no redis container. `docker compose down`, removed
+  `/mnt/raid/services/redis` and `src/services/redis/`. Dropped `deployRedis` from gradle.
 - [ ] **2.2** Only if in use: bind `127.0.0.1:6379:6379`, `--requirepass` from `.env`, add `share-net`.
-- [ ] **2.3** Remove `deployUnifi` from `deployAll`. Delete `src/services/unifi/` after the `unifi`
+  **Skipped** — stack deleted.
+- [x] **2.3** Remove `deployUnifi` from `deployAll`. Delete `src/services/unifi/` after the `unifi`
   volume is confirmed backed up. Frees host `8443:443` for Traefik `public`. **Do not skip — gates
   routing.**
+  **Did (2026-09-06):** old `unifi` volume already gone; `unifi-os` healthy with backup sidecar.
+  `compose down` in `/mnt/raid/services/unifi` (no resources), removed that dir and
+  `src/services/unifi/`. Dropped `deployUnifi`. Host **8443 free**. `unifi-os` untouched.
 
 ## 3. Jenkins is `privileged` and runs as root
 
@@ -90,32 +115,49 @@ house Clients may still reach TrueNAS *data*. BMC itself stays off IoT/Guest.
 
 `privileged: true` is host-root for any pipeline. Do this when a failed build is affordable.
 
-- [ ] **3.1** Remove `privileged: true`. Deploy, run the next scheduled job. If a pipeline needs
+- [x] **3.1** Remove `privileged: true`. Deploy, run the next scheduled job. If a pipeline needs
   Docker, use a socket-proxied `tcp://` endpoint or an agent — not `privileged` on the controller.
-- [ ] **3.2** Drop `user: "root"`. Image default is `jenkins` (UID 1000). If the volume blocks that:
+  **Did (2026-09-06):** `privileged: true` removed from compose.
+- [x] **3.2** Drop `user: "root"`. Image default is `jenkins` (UID 1000). If the volume blocks that:
   `chown -R 1000:1000` on `jenkins-home` once.
+  **Did (2026-09-06):** `user: "root"` removed.
 
 ## 4. SonarQube Postgres `sonar` / `sonar` on the LAN
 
 [`src/services/sonarqube/docker-compose.yml`](../../src/services/sonarqube/docker-compose.yml)
-publishes 5432 with git-committed credentials. Collides with timescaledb.
+published 5432 with git-committed credentials. Collided with timescaledb.
 
-- [ ] **4.1** Drop the published 5432 port. SonarQube uses `db:5432` on `share-net`.
-- [ ] **4.2** Move password to `.env` as `SONAR_DB_PASSWORD`; `SONAR_JDBC_PASSWORD` and
+- [x] **4.1** Drop the published 5432 port. SonarQube uses `db:5432` on `share-net`.
+  **Did (2026-09-06):** `db` has no `ports:`. Host `5432` not listening. Container `postgresql`
+  shows `5432/tcp` only.
+- [x] **4.2** Move password to `.env` as `SONAR_DB_PASSWORD`; `SONAR_JDBC_PASSWORD` and
   `POSTGRES_PASSWORD` must match.
-- [ ] **4.3** Rotate the live role **before** restart:
+  **Did (2026-09-06):** compose uses `${SONAR_DB_PASSWORD:?set SONAR_DB_PASSWORD in .env}`.
+  Host `/mnt/raid/services/sonarqube/.env` is `chmod 600`. Copy that value into Vaultwarden.
+- [x] **4.3** Rotate the live role **before** restart:
   `docker exec postgresql psql -U sonar -c "ALTER USER sonar WITH PASSWORD '<new>';"`
+  **Did (2026-09-06):** `ALTER USER sonar` then recreate. JDBC pool connects. Recreate left ES
+  `metadatas` corrupt (`IndexCreator` NPE); stopped SQ, deleted `es7` in `sonarqube-data` only
+  (Postgres is source of truth), restarted. `api/system/status` is `UP` 9.9.8;
+  `https://sonarqube.tecronin.uk` 200. Timescaledb still publishes host 5432 if that stack is up.
 
 ## 5. Wiki credentials in git, and host port 6875
 
-[`src/services/wiki/docker-compose.yml`](../../src/services/wiki/docker-compose.yml) still has
-`changeme_root` / `bookstack@123` and `"6875:80"`. No Traefik in front of 6875; that makes
+[`src/services/wiki/docker-compose.yml`](../../src/services/wiki/docker-compose.yml) had
+`changeme_root` / `bookstack@123` and `"6875:80"`. No Traefik in front of 6875; that made
 `APP_PROXIES: "*"` unsafe. **Gates routing.**
 
-- [ ] **5.1** Drop `"6875:80"`. `APP_URL` is the HTTPS name.
-- [ ] **5.2** `${BOOKSTACK_DB_PASSWORD}` and `${BOOKSTACK_DB_ROOT_PASSWORD}` in
+- [x] **5.1** Drop `"6875:80"`. `APP_URL` is the HTTPS name.
+  **Did (2026-09-06):** no `ports:` on bookstack. Host 6875 not listening. Container has `80/tcp` only.
+- [x] **5.2** `${BOOKSTACK_DB_PASSWORD}` and `${BOOKSTACK_DB_ROOT_PASSWORD}` in
   `/mnt/raid/services/wiki/.env`. Update the healthcheck (`-pbookstack@123`).
-- [ ] **5.3** Rotate MariaDB users **before** restarting BookStack.
+  **Did (2026-09-06):** compose requires those plus `BOOKSTACK_APP_KEY` from the host `.env`
+  (`chmod 600`). Copied live `APP_KEY` and `SMTP_*` into `.env` so recreate did not wipe mail/key.
+  Healthcheck uses container `MYSQL_PASSWORD`. Copy DB passwords into Vaultwarden.
+- [x] **5.3** Rotate MariaDB users **before** restarting BookStack.
+  **Did (2026-09-06):** stopped bookstack, `ALTER USER` for `bookstack@%` and all `root` hosts
+  (socket root; `changeme_root` was not the live root). Then `compose up -d`. DB healthy;
+  `https://wiki.tecronin.uk` 302 → `/login` 200; `Nothing to migrate.`
 
 ## 6. Remaining host-published ports off the LAN
 

@@ -13,16 +13,16 @@ services:
       PUID: 1000
       PGID: 1000
       TZ: Europe/London                        # <-- set your timezone
-      MYSQL_ROOT_PASSWORD: changeme_root       # <-- change this
+      MYSQL_ROOT_PASSWORD: ${BOOKSTACK_DB_ROOT_PASSWORD:?set BOOKSTACK_DB_ROOT_PASSWORD in .env}
       MYSQL_DATABASE: bookstack
       MYSQL_USER: bookstack
-      MYSQL_PASSWORD: bookstack@123              # <-- change this
+      MYSQL_PASSWORD: ${BOOKSTACK_DB_PASSWORD:?set BOOKSTACK_DB_PASSWORD in .env}
     volumes:
       - mariadb_data:/config
     labels:
       - docker-volume-backup.stop-during-backup=true
     healthcheck:
-      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "bookstack", "-pbookstack@123"]
+      test: ["CMD-SHELL", "mysqladmin ping -h localhost -u bookstack -p\"$$MYSQL_PASSWORD\""]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -35,18 +35,16 @@ services:
     depends_on:
       mariadb:
         condition: service_healthy
-    ports:
-      - "6875:80"       # Web UI → http://your-host:6875
     environment:
       PUID: 1000
       PGID: 1000
       TZ: America/Chicago                        # <-- set your timezone
       APP_URL: https://wiki.tecronin.uk
-      APP_KEY: ${BOOKSTACK_APP_KEY}                                # <-- leave blank on first run, BookStack generates it
+      APP_KEY: ${BOOKSTACK_APP_KEY:?set BOOKSTACK_APP_KEY in .env}
       DB_HOST: mariadb
       DB_PORT: 3306
       DB_USERNAME: bookstack
-      DB_PASSWORD: bookstack@123                 # <-- must match MYSQL_PASSWORD above
+      DB_PASSWORD: ${BOOKSTACK_DB_PASSWORD:?set BOOKSTACK_DB_PASSWORD in .env}
       DB_DATABASE: bookstack
       QUEUE_CONNECTION: database
       ALLOWED_ATTACHMENT_TYPES: "zip,json,xml,txt,pdf,doc,docx,xls,xlsx,ppt,pptx,csv,md,mp4,mov,avi,mkv"

@@ -42,7 +42,8 @@ match. The old `tec-swtich-main` / `tec-switch-secondary` names are gone.
 | Port | Role | State |
 |---|---|---|
 | Tw1/0/1 | `tec-pi-mgr` (MAC `2c:cf:67:25:88:07`) | up 1G, PoE Enable / High / Class4 — **GUI-verified 2026-09-06** |
-| Tw1/0/2–6 | unused | admin-down, PoE off |
+| Tw1/0/2 | NAS IPMI `tec-truenas-ipmi` (`192.168.1.31`, MAC `90:5a:08:15:73:d7`) | **up 2026-09-06** — recabled from OPNsense; `no shutdown`, PoE off, description `nas-ipmi`; saved startup+backup. Before enable, BMC MAC was learned on Te1/0/10 (failover via NAS data path) |
+| Tw1/0/3–6 | unused | admin-up, LinkDown, PoE off — plug in, get link |
 | Tw1/0/7 | wired client (`00:1b:a9:82:eb:27`) | up 100M, PoE off |
 | Tw1/0/8 | AP 1 (bridges client MACs) | up 2.5G, PoE Enable / High / Class4 — **GUI-verified 2026-09-06** |
 | Te1/0/9 | inter-site to Site B Te1/0/10 | up 10G |
@@ -52,10 +53,10 @@ match. The old `tec-swtich-main` / `tec-switch-secondary` names are gone.
 
 | Port | Role | State |
 |---|---|---|
-| Tw1/0/1–4 | unused | admin-down, PoE off |
+| Tw1/0/1–4 | unused | admin-up, LinkDown, PoE off — plug in, get link |
 | Tw1/0/5 | desk device | up 1G, PoE off |
 | Tw1/0/6 | desk device | up 100M, PoE off |
-| Tw1/0/7–8 | unused | admin-down, PoE off |
+| Tw1/0/7–8 | unused | admin-up, LinkDown, PoE off — plug in, get link |
 | Te1/0/9 | `tec-desktop` (plan: SFP+ 2) | up 10G |
 | Te1/0/10 | inter-site from Site A Te1/0/9 | up 10G; DHCP Filter legal server port |
 
@@ -66,7 +67,8 @@ PoE system budget is 160W on both. Site B draws 0W.
 Applied 2026-09-06 over SSH as `cursor`. Saved with `copy running-config startup-config` and
 `copy running-config backup-config` on both. **Both switches were rebooted the same day and
 kept the hardened config** (Site A ~4 minutes uptime after reboot; hostname, HTTP/TLS, DHCP
-Filter, DoS, unused ports, and PoE Class 4/high on Tw1/0/1 and Tw1/0/8 all survived).
+Filter, DoS, and PoE Class 4/high on Tw1/0/1 and Tw1/0/8 all survived). Unused-port `shutdown` was
+part of that save and was **reverted the same day**.
 `tec-pi-mgr` answered ping again after the power cut.
 
 - Hostnames `tec-sw-a` / `tec-sw-b`
@@ -75,11 +77,13 @@ Filter, DoS, unused ports, and PoE Class 4/high on Tw1/0/1 and Tw1/0/8 all survi
 - HTTPS TLS 1.2 only, ciphers `ECDHE-AES128-GCM-SHA256` and `ECDHE-AES256-GCM-SHA384`
 - Telnet off, SNMP off, SSH v2 on
 - NTP via DHCP option 42 (OPNsense), time correct
-- DoS prevent enabled, all types
+- DoS prevent enabled, all types except **SYN sPort less 1024** (`port-less-1024`). That type was
+  on with the 2026-09-06 apply and made NFS `mount -a` hang network-wide (privileged source ports;
+  TrueNAS `secure` exports). Unchecked on both switches the same evening; leave it off.
 - DHCP Filter global + copper access ports; legal server `192.168.1.1` on Te1/0/10
 - Storm control 1024 kbps broadcast+multicast on copper; not on 10G
 - Loopback detection global + copper
-- Unused copper admin-down; PoE only on Site A Tw1/0/1 and Tw1/0/8
+- Copper admin-up on every jack (2026-09-06: unused-port `shutdown` reverted). PoE only on Site A Tw1/0/1 and Tw1/0/8
 - No static routing / inter-VLAN routing
 
 Internal CA certs were issued 2026-09-06 (RSA 2048, SAN present). OPNsense PEM keys are PKCS#8;

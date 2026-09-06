@@ -25,7 +25,7 @@
 ### SonarQube
 - **Purpose**: Code quality and security analysis
 - **Configuration Location**: `src/services/sonarqube/`
-- **Default Port**: 9000 (its postgres publishes 5432)
+- **Default Port**: 9000 (Postgres is compose-internal on `share-net`; password is `SONAR_DB_PASSWORD` in the host `.env`)
 - **Configuration Steps**:
   1. Database setup
   2. Quality profiles configuration

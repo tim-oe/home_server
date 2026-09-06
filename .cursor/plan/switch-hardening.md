@@ -59,9 +59,11 @@ SSH as `cursor` (password `CURSOR_SW_PWD`). Needs old algorithms:
   `docs/network-layout.md` rather than living only in the certificate.
 - **Home network, not a fortress.** Front door (WAN / Traefik) and obvious back doors (services sitting
   on the LAN that should not be) get locked. Per-device switch paperwork — MAC limits, IP-MAC bindings,
-  ARP Inspection, Source Guard, Access Control down to one admin PC — does not. New phones and laptops
-  stay DHCP on the trusted SSID or a Clients port; no registration step. Reach your own systems from a
-  house laptop without VPN. WireGuard is the key for *away*, not for sitting in the living room.
+  ARP Inspection, Source Guard, Access Control down to one admin PC, **admin-down spare jacks** — does
+  not. A new phone or laptop plugs into a copper port and gets DHCP; no enable-the-port step that will
+  be forgotten. PoE stays off except on chosen PDs (that does not block a laptop). Reach your own
+  systems from a house laptop without VPN. WireGuard is the key for *away*, not for sitting in the
+  living room.
 - **Neither switch routes.** Restated from [`vlan-segmentation.md`](vlan-segmentation.md) because it is a
   hardening decision as much as a topology one: traffic routed by a switch never reaches OPNsense, so no
   firewall policy applies to it. Static routing and inter-VLAN routing stay off on both.
@@ -200,14 +202,17 @@ except item 7.
   Te1/0/10 on both (Site A = OPNsense `ixl1`; Site B = inter-site toward OPNsense). Survived reboot.
 - [x] **6. DoS Defend, then storm control, then loopback detection.** Not on 10G / inter-site.
   **Did:** one `ip dos-prevent type …` per type (cannot pack types). Storm control must set `rate-mode
-  kbps` first (`… kbps 1024` is invalid):
+  kbps` first (`… kbps 1024` is invalid).
+  **Do not enable `port-less-1024` (GUI: SYN sPort less 1024).** Applied with the rest on 2026-09-06;
+  NFS `mount -a` then hung on tec-desktop and the laptop. Classic NFS clients use source ports &lt;1024;
+  TrueNAS exports are `secure` so `noresvport` is denied. SMB/ICMP/`showmount` still worked. Unchecked
+  on both switches the same evening; `mount` recovered. Leave that type off.
   ```
   ip dos-prevent
   ip dos-prevent type land
   ip dos-prevent type scan-synfin
   ip dos-prevent type xma-scan
   ip dos-prevent type null-scan
-  ip dos-prevent type port-less-1024
   ip dos-prevent type blat
   ip dos-prevent type ping-flood
   ip dos-prevent type syn-flood
@@ -223,12 +228,13 @@ except item 7.
   ```
 - [x] **7. Port Security MAC limits and Site B Port Isolation — skipped 2026-09-06.** These are
   local L2 controls (extra MAC on a jack; two Site B desks talking to each other). They do **not**
-  reduce internet exposure. Unused ports are already admin-down (item 8). Revisit only if a live
-  jack in a public part of the house becomes a real concern, or as part of VLAN segmentation.
-- [x] **8. Admin-down unused ports; PoE only on chosen PDs.**
-  **Did Site A:** Tw1/0/2–6 `shutdown` + PoE off; Tw1/0/7 PoE off (wired client stays up); PoE on 1 and 8
-  only.
-  **Did Site B:** all copper PoE off; Tw1/0/1–4 and 7–8 `shutdown`; Tw1/0/5–6 stay up (desk).
+  reduce internet exposure. Revisit only if a live jack in a public part of the house becomes a real
+  concern, or as part of VLAN segmentation.
+- [x] **8. PoE only on chosen PDs. Do not admin-down spare copper.** A shut jack is a forgotten
+  manual step the next time something is plugged in — home network, not a fortress.
+  **Did then reverted (2026-09-06):** unused copper was `shutdown`; that blocked NAS IPMI on Tw1/0/2
+  until `no shutdown`. **Now:** all copper admin-up on both switches (empty jacks are LinkDown, not
+  AdminDown). PoE on Site A Tw1/0/1 and Tw1/0/8 only; PoE off everywhere else including Site B.
 - [x] **9. SNMP off.** Revisit only with `snmp_exporter`, and then v3.
   **Did:** already off; left off.
 - [x] **10. NTP.** DHCP option 42 → OPNsense.

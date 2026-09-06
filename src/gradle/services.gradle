@@ -59,14 +59,6 @@ tasks.register('deployRabbitmq', GradleBuild) {
     tasks = ['deployService']
 }
 
-tasks.register('deployRedis', GradleBuild) {
-    description = 'deploy redis scripts'
-    group = "deploy stuff"
-    buildName = 'redis'
-    startParameter.projectProperties = ['svc':'redis']
-    tasks = ['deployService']
-}
-
 tasks.register('deployPortainer', GradleBuild) {
     description = 'deploy portainer scripts'
     group = "deploy stuff"
@@ -80,14 +72,6 @@ tasks.register('deploySonarqube', GradleBuild) {
     group = "deploy stuff"
     buildName = 'sonarqube'
     startParameter.projectProperties = ['svc':'sonarqube']
-    tasks = ['deployService']
-}
-
-tasks.register('deployUnifi', GradleBuild) {
-    description = 'deploy unifi scripts'
-    group = "deploy stuff"
-    buildName = 'unifi' 
-    startParameter.projectProperties = ['svc':'unifi']
     tasks = ['deployService']
 }
 
@@ -239,9 +223,7 @@ tasks.register('deployAll') {
         'deployOpenhab',
         'deployPortainer',
         'deployRabbitmq',
-        'deployRedis',
         'deploySonarqube',
-        'deployUnifi',
         'deployUnifiOs',
         'deployUpsMon',
         'deployWiki',

@@ -292,7 +292,9 @@ not happen, and the consequences run through Phase 0 and Phase 1:
   hostname and the second lease overwrote the first.
 - **Startup config survives reboot.** `copy running-config startup-config` plus a `backup-config`
   copy, 2026-09-06. **Both reboot tests passed the same day** — hostname, HTTP lockdown, DHCP
-  Filter, DoS defend, unused-port shutdowns and Site A PoE Class 4/high all came back. See
+  Filter, DoS defend, and Site A PoE Class 4/high all came back. Unused-port `shutdown` was applied
+  then **reverted 2026-09-06** (home network: spare jacks stay admin-up). DoS type `port-less-1024`
+  (GUI: SYN sPort less 1024) was also **reverted 2026-09-06** after it broke NFS. See
   [`docs/network-layout.md`](../../docs/network-layout.md).
 - The **10m inter-site AOC** never got its side-by-side bench test, but has now been **verified in place
   (2026-09-05)**: 60 seconds per direction at 9.41 and 9.42 Gbit/s, which is line rate both ways. That
@@ -445,10 +447,10 @@ work. Per Phase 1, do it in that same outage rather than as a later pass.
 2. Assign each mixed device its own access port and zone. Anything you cannot positively identify goes to
    IoT, not Clients.
 3. Use **Port Isolation** for anything that has no reason to talk to its neighbours.
-4. **Disable PoE on every port that is not serving a device you chose to power**, and **admin-down the
-   unused ports** while you are there. A PoE port only energises after a PD negotiates, so the PoE half is
-   hygiene rather than a hole being closed, but it belongs with the default-to-IoT rule below: an unknown
-   device plugged into a spare port should get neither trust nor power.
+4. **Disable PoE on every port that is not serving a device you chose to power.** Do **not**
+   admin-down unused ports — a shut jack is a forgotten step the next time something is plugged in.
+   PoE only energises after a PD negotiates; link stays available. Unidentified devices still go to
+   IoT by VLAN, not by leaving the port dead.
 
 Because Site B's population changes, write the port-to-zone mapping into `docs/network-layout.md` and
 treat an unassigned port as IoT by default rather than leaving it in Clients.

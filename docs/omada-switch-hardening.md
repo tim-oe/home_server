@@ -303,7 +303,10 @@ one client before saving and walking away.
 
 ### 2. DoS Defend
 
-**SECURITY → DoS Defend** — enable. No downside on a network this size.
+**SECURITY → DoS Defend** — enable. Leave **SYN sPort less 1024** (`port-less-1024`) **off**.
+That type drops NFS clients that bind source ports below 1024. It was turned on with the rest on
+2026-09-06 and `mount -a` hung on tec-desktop and the laptop until it was unchecked; SMB and ping
+were fine. TrueNAS exports are `secure`, so `noresvport` is not a workaround.
 
 ### 3. Storm control, then loopback detection
 
@@ -322,8 +325,8 @@ Do not apply storm control to the trunk or the 10G inter-site link.
 
 ### 1. Port Security on fixed devices — skipped 2026-09-06
 
-Not an internet-facing control. Extra MACs on a jack are a physical-access scenario; unused ports are
-already admin-down. Left documented so it is a choice, not an unfinished checkbox.
+Not an internet-facing control. Extra MACs on a jack are a physical-access scenario. Left documented
+so it is a choice, not an unfinished checkbox. Spare jacks stay admin-up (home network, not a fortress).
 
 **SECURITY → Port Security** would cap learned MACs (Drop, not port shutdown). Do not apply to AP ports
 or trunks.
@@ -334,14 +337,13 @@ Site B is metres from Site A on the same VLAN. Isolating Tw1/0/5–6 from each o
 they can reach on the rest of the LAN (OPNsense, NAS, docker host, Site A). Inconvenience without a WAN
 win.
 
-### 3. Close the unused ports
+### 3. Spare jacks stay up; PoE only on chosen PDs
 
-- **Admin-down** every port not in use.
+- **Do not admin-down** unused copper. A shut jack is a forgotten step the next time a laptop or
+  Pi is plugged in.
 - **Disable PoE** on every port not serving a device you chose to power (**SYSTEM → PoE → PoE Config**).
 
-A PoE port only energises after a PD negotiates, so the PoE half is hygiene rather than a hole being
-closed. It belongs with the admin-down rule: an unknown device in a spare port should get neither trust nor
-power.
+A PoE port only energises after a PD negotiates, so the PoE half is hygiene. Link stays available.
 
 ### 4. No routing, on either switch
 
@@ -440,6 +442,9 @@ backup — which is why Part 1 step 4 comes before everything else.
 
 **`tec-pi-mgr` died during a reboot.** Perpetual PoE was not enabled, or was enabled but never saved.
 
+**NFS `mount -a` hangs (laptop and tec-desktop) while SMB and ping to the NAS still work.**
+**SECURITY → DoS Defend → SYN sPort less 1024** is on. Uncheck it on **both** switches, Apply, Save.
+
 ---
 
 ## CLI that was applied (2026-09-06)
@@ -466,7 +471,6 @@ ip dos-prevent type land
 ip dos-prevent type scan-synfin
 ip dos-prevent type xma-scan
 ip dos-prevent type null-scan
-ip dos-prevent type port-less-1024
 ip dos-prevent type blat
 ip dos-prevent type ping-flood
 ip dos-prevent type syn-flood
@@ -491,7 +495,10 @@ copy running-config backup-config
 On Site B the hostname is `tec-sw-b`. Legal DHCP server port is Te1/0/10 on both (OPNsense
 uplink on Site A; inter-site toward OPNsense on Site B).
 
-### Site A only — PoE keep, unused copper down
+Do **not** replay `ip dos-prevent type port-less-1024` (GUI: SYN sPort less 1024). It was in the
+2026-09-06 apply, then removed the same evening after it broke NFS. See Part 4 step 2.
+
+### Site A only — PoE keep, copper stays up
 
 ```
 configure
@@ -507,11 +514,8 @@ interface two-gigabitEthernet 1/0/8
  power inline consumption class4
  description ap-1
 exit
-interface range two-gigabitEthernet 1/0/2-6
- shutdown
- power inline supply disable
-exit
-interface two-gigabitEthernet 1/0/7
+interface range two-gigabitEthernet 1/0/2-7
+ no shutdown
  power inline supply disable
 exit
 end
@@ -519,18 +523,13 @@ copy running-config startup-config
 copy running-config backup-config
 ```
 
-### Site B only — all PoE off, unused copper down
+### Site B only — all PoE off, copper stays up
 
 ```
 configure
 interface range two-gigabitEthernet 1/0/1-8
+ no shutdown
  power inline supply disable
-exit
-interface range two-gigabitEthernet 1/0/1-4
- shutdown
-exit
-interface range two-gigabitEthernet 1/0/7-8
- shutdown
 exit
 end
 copy running-config startup-config
@@ -551,6 +550,8 @@ Port map: [`network-layout.md`](network-layout.md).
 - **802.1X** (**SECURITY → 802.1x**) needs a RADIUS server, which does not exist here. It is also mutually
   exclusive with Port Security, which is more useful on a small static network. Ruled out rather than left
   as a permanent someday item.
+- **DoS type `port-less-1024` / SYN sPort less 1024.** Breaks NFS (privileged source ports) on this
+  LAN. Left off after the 2026-09-06 outage; do not turn it back on.
 - **ACLs** (**SECURITY → ACL**) can express most of the firewall policy, and should not. OPNsense is the
   single enforcement point; policy split across two devices is policy nobody can audit.
 - **Syslog off-box.** Both switches log locally via **MAINTENANCE → Logs**, which means the logs are lost
