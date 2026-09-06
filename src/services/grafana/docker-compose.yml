@@ -31,7 +31,7 @@ services:
       # downloads lock sqlite and fail datasource provisioning.
       - GF_PLUGINS_PREINSTALL_DISABLED=true
       # contactpoints.yml interpolates this at provision time
-      - GOTIFY_TOKEN=${GOTIFY_TOKEN:?set GOTIFY_TOKEN in .env}
+      - GOTIFY_TOKEN=${GOTIFY_TOKEN}
     labels:
       # Unique value so wiki/gotify/traefik backups do not docker-stop this container.
       # Offen matches this against BACKUP_STOP_CONTAINER_LABEL on the sidecar.

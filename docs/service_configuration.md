@@ -83,7 +83,7 @@ node_exporter on each host (`:9100`), cAdvisor for containers on tec-desktop, Tr
 ### Vaultwarden
 - **Purpose**: Password management system
 - **Configuration Location**: `src/services/vaultwarden/`
-- **Default Port**: 8860 (LAN-only via the `lan-only@file` middleware)
+- **Default Port**: 8860 (LAN-only via the `vaultwarden-lan` ipAllowList label)
 - **Configuration Steps**:
   1. Initial admin setup
   2. SMTP configuration

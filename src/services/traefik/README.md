@@ -13,19 +13,19 @@ Access: `https://<svc>.tecronin.uk`. HTTP on :80 redirects to HTTPS.
 | `nexus.tecronin.uk` | nexus:8081 | labels |
 | `jenkins.tecronin.uk` | jenkins:8080 | labels |
 | `grafana.tecronin.uk` | grafana:3000 | labels |
-| `prometheus.tecronin.uk` | prometheus:9090 | labels + `lan-only@file` |
+| `prometheus.tecronin.uk` | prometheus:9090 | labels + `prometheus-lan` ipAllowList |
 | `sonarqube.tecronin.uk` | sonarqube:9000 | labels |
 | `portainer.tecronin.uk` | portainer:9000 | labels |
 | `obsidian.tecronin.uk` | obsidian:8080 | labels |
 | `wiki.tecronin.uk` | bookstack:80 | labels |
-| `vaultwarden.tecronin.uk` | vaultwarden:8860 | labels + `lan-only@file` |
+| `vaultwarden.tecronin.uk` | vaultwarden:8860 | labels + `vaultwarden-lan` ipAllowList |
 | `upsdesktop.tecronin.uk` | upsdesktop:8010 | labels |
 | `upspimgr.tecronin.uk` | upspimgr:8020 | labels |
 | `velxio.tecronin.uk` | velxio:80 | labels + Host override |
 | `mq.tecronin.uk` | rabbitmq:15672 | labels |
 | `openhab.tecronin.uk` | openhab:8881 | labels |
 | `gotify.tecronin.uk` | gotify:80 | labels |
-| `unifi.tecronin.uk` | unifi-os-server:443 (https) | labels + `unifi@file` + `lan-only@file` |
+| `unifi.tecronin.uk` | unifi-os-server:443 (https) | labels + `unifi@file` + `unifi-os-lan` ipAllowList |
 | `weather.tecronin.uk` | tec-weather.localdomain:8000 (WeatherWatch) | file provider |
 
 `prometheus.tecronin.uk` is LAN-only. Prometheus has no authentication of its own.
@@ -44,7 +44,7 @@ Labels cannot express these, so they live in `dynamic/`, loaded by the
 with `watch: true` — edits apply without restarting Traefik. Syntax:
 [file routing configuration](https://doc.traefik.io/traefik/v3.7/reference/routing-configuration/other-providers/file/).
 
-- **`middlewares.yml`** — `lan-only` [`ipAllowList`](https://doc.traefik.io/traefik/v3.7/reference/routing-configuration/http/middlewares/ipallowlist/) for vaultwarden, unifi-os, and prometheus (`192.168.1.0/24`, `10.9.0.0/24`). Traefik v3 renamed this from v2's `ipWhiteList`.
+- **`middlewares.yml`** — `lan-only` [`ipAllowList`](https://doc.traefik.io/traefik/v3.7/reference/routing-configuration/http/middlewares/ipallowlist/) (`192.168.1.0/24`, `10.9.0.0/24`). Not referenced by routers: a docker label of `middlewares=lan-only@file` 404s on Traefik start until this file is parsed. Vaultwarden, prometheus, and unifi-os define the same CIDRs as labels on the app container instead. Traefik v3 renamed this from v2's `ipWhiteList`.
 - **`transports.yml`** — `unifi` [ServersTransport](https://doc.traefik.io/traefik/v3.7/reference/routing-configuration/http/load-balancing/serverstransport/) with `insecureSkipVerify` and 600s restore timeouts. Referenced as `traefik.http.services.unifi-os.loadbalancer.serverstransport=unifi@file`. This is the one thing that *cannot* be set from docker labels.
 - **`external.yml`** — WeatherWatch on `tec-weather.localdomain:8000`, not a container on `share-net`.
   Traefik uses OPNsense (`dns: 192.168.1.1`) so that LAN name does not loop back to this host
@@ -62,6 +62,13 @@ On the app container (not sidecars):
       - traefik.http.services.<svc>.loadbalancer.server.port=<container-port>
 ```
 
+LAN-only: add the ipAllowList on **this** container (unique middleware name) and point the router at it with no `@file`. Copying `lan-only@file` from an old stack 404s until Traefik parses `/dynamic`.
+
+```yaml
+      - traefik.http.middlewares.<svc>-lan.ipallowlist.sourcerange=192.168.1.0/24,10.9.0.0/24
+      - traefik.http.routers.<svc>.middlewares=<svc>-lan
+```
+
 Full list of supported labels:
 [docker routing configuration](https://doc.traefik.io/traefik/v3.7/reference/routing-configuration/other-providers/docker/).
 What each one above does:
@@ -71,7 +78,7 @@ What each one above does:
 | `traefik.enable` | required because the provider runs with `exposedByDefault: false` — see [docker provider](https://doc.traefik.io/traefik/v3.7/reference/install-configuration/providers/docker/) |
 | `routers.<svc>.rule` | matchers and precedence: [rules and priority](https://doc.traefik.io/traefik/v3.7/reference/routing-configuration/http/routing/rules-and-priority/) |
 | `routers.<svc>.entrypoints` | [entrypoints](https://doc.traefik.io/traefik/v3.7/reference/install-configuration/entrypoints/) — `web` and `websecure`, defined in `traefik.yml` |
-| `routers.<svc>.middlewares` | [middlewares overview](https://doc.traefik.io/traefik/v3.7/reference/routing-configuration/http/middlewares/overview/); `@file` suffix references `dynamic/` |
+| `routers.<svc>.middlewares` | [middlewares overview](https://doc.traefik.io/traefik/v3.7/reference/routing-configuration/http/middlewares/overview/); omit `@file` when the middleware is a label on the same container |
 | `services.<svc>.loadbalancer.*` | [HTTP services](https://doc.traefik.io/traefik/v3.7/reference/routing-configuration/http/load-balancing/service/) — `server.port`, `server.scheme`, `serverstransport` |
 
 `port` is the port *inside* the container on `share-net`, not a published host port. Websocket

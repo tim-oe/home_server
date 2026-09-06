@@ -72,7 +72,9 @@ services:
       - traefik.enable=true
       - traefik.http.routers.unifi-os.rule=Host(`unifi.tecronin.uk`)
       - traefik.http.routers.unifi-os.entrypoints=websecure
-      - traefik.http.routers.unifi-os.middlewares=lan-only@file
+      # Same docker provider as the router — lan-only@file 404s until Traefik parses /dynamic.
+      - traefik.http.middlewares.unifi-os-lan.ipallowlist.sourcerange=192.168.1.0/24,10.9.0.0/24
+      - traefik.http.routers.unifi-os.middlewares=unifi-os-lan
       - traefik.http.services.unifi-os.loadbalancer.server.port=443
       - traefik.http.services.unifi-os.loadbalancer.server.scheme=https
       - traefik.http.services.unifi-os.loadbalancer.serverstransport=unifi@file

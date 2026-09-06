@@ -44,7 +44,9 @@ services:
       - traefik.enable=true
       - traefik.http.routers.vaultwarden.rule=Host(`vaultwarden.tecronin.uk`)
       - traefik.http.routers.vaultwarden.entrypoints=websecure
-      - traefik.http.routers.vaultwarden.middlewares=lan-only@file
+      # Same docker provider as the router — lan-only@file 404s until Traefik parses /dynamic.
+      - traefik.http.middlewares.vaultwarden-lan.ipallowlist.sourcerange=192.168.1.0/24,10.9.0.0/24
+      - traefik.http.routers.vaultwarden.middlewares=vaultwarden-lan
       - traefik.http.services.vaultwarden.loadbalancer.server.port=8860
   backup:
     # https://github.com/offen/docker-volume-backup/

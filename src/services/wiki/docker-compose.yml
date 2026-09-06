@@ -13,10 +13,10 @@ services:
       PUID: 1000
       PGID: 1000
       TZ: Europe/London                        # <-- set your timezone
-      MYSQL_ROOT_PASSWORD: ${BOOKSTACK_DB_ROOT_PASSWORD:?set BOOKSTACK_DB_ROOT_PASSWORD in .env}
+      MYSQL_ROOT_PASSWORD: ${BOOKSTACK_DB_ROOT_PASSWORD}
       MYSQL_DATABASE: bookstack
       MYSQL_USER: bookstack
-      MYSQL_PASSWORD: ${BOOKSTACK_DB_PASSWORD:?set BOOKSTACK_DB_PASSWORD in .env}
+      MYSQL_PASSWORD: ${BOOKSTACK_DB_PASSWORD}
     volumes:
       - mariadb_data:/config
     labels:
@@ -40,11 +40,11 @@ services:
       PGID: 1000
       TZ: America/Chicago                        # <-- set your timezone
       APP_URL: https://wiki.tecronin.uk
-      APP_KEY: ${BOOKSTACK_APP_KEY:?set BOOKSTACK_APP_KEY in .env}
+      APP_KEY: ${BOOKSTACK_APP_KEY}
       DB_HOST: mariadb
       DB_PORT: 3306
       DB_USERNAME: bookstack
-      DB_PASSWORD: ${BOOKSTACK_DB_PASSWORD:?set BOOKSTACK_DB_PASSWORD in .env}
+      DB_PASSWORD: ${BOOKSTACK_DB_PASSWORD}
       DB_DATABASE: bookstack
       QUEUE_CONNECTION: database
       ALLOWED_ATTACHMENT_TYPES: "zip,json,xml,txt,pdf,doc,docx,xls,xlsx,ppt,pptx,csv,md,mp4,mov,avi,mkv"

@@ -136,7 +136,7 @@ Each stack is `src/services/<svc>/`. `./gradlew deploy<Svc>` copies the files to
 
 2. **Reverse Proxy Setup**
    - Only 80 and 443 are published by Traefik; service ports on the LAN are for troubleshooting
-   - Restrict a route to the LAN with the `lan-only@file` middleware, as vaultwarden and unifi-os do
+   - Restrict a route to the LAN with an `ipallowlist` label on that container, as vaultwarden and unifi-os do (do not use `lan-only@file`; Traefik drops the route until the file provider loads)
 
 ## Maintenance Procedures
 

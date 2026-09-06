@@ -7,12 +7,9 @@ services:
     container_name: gotify
     hostname: gotify
     restart: unless-stopped
-    env_file:
-      - /etc/environment
     environment:
       GOTIFY_DEFAULTUSER_NAME: admin
-      # interpolated from this directory's .env (not from env_file)
-      GOTIFY_DEFAULTUSER_PASS: ${GOTIFY_DEFAULTUSER_PASS:?set GOTIFY_DEFAULTUSER_PASS in .env}
+      GOTIFY_DEFAULTUSER_PASS: ${GOTIFY_DEFAULTUSER_PASS}
       GOTIFY_REGISTRATION: "false"
     volumes:
       - gotify-data:/app/data

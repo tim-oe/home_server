@@ -27,7 +27,9 @@ services:
       - traefik.enable=true
       - traefik.http.routers.prometheus.rule=Host(`prometheus.tecronin.uk`)
       - traefik.http.routers.prometheus.entrypoints=websecure
-      - traefik.http.routers.prometheus.middlewares=lan-only@file
+      # Same docker provider as the router — lan-only@file 404s until Traefik parses /dynamic.
+      - traefik.http.middlewares.prometheus-lan.ipallowlist.sourcerange=192.168.1.0/24,10.9.0.0/24
+      - traefik.http.routers.prometheus.middlewares=prometheus-lan
       - traefik.http.services.prometheus.loadbalancer.server.port=9090
   node-exporter:
     image: prom/node-exporter:v1.9.1

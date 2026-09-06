@@ -1,3 +1,6 @@
+# Kept for a future entrypoint-level allowlist. Do not point docker routers at
+# lan-only@file: Traefik drops the route if the file provider has not loaded yet.
+# Live LAN-only services define the same CIDRs as labels on the app container.
 http:
   middlewares:
     lan-only:

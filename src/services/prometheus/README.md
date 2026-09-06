@@ -4,7 +4,7 @@ Pull-based monitoring for the estate: Prometheus scrapes node_exporter on every
 host, cAdvisor on this host, and Traefik's unpublished metrics entrypoint.
 Grafana is the query UI, dashboard host, and alerter; Gotify is the sink.
 
-Access: `https://prometheus.tecronin.uk` (LAN-only via `lan-only@file`).
+Access: `https://prometheus.tecronin.uk` (LAN-only via the `prometheus-lan` ipAllowList label).
 Grafana stays at `https://grafana.tecronin.uk`.
 
 The Prometheus TSDB is **not** backed up. It is large and regenerable from

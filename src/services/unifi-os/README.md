@@ -26,7 +26,7 @@ That same privileged systemd will spawn gettys on the host's TTYs and take over 
 echo 'UOS_SYSTEM_IP=<lan-ip>' > /mnt/raid/services/unifi-os/.env
 ```
 
-Routing is Traefik labels on `unifi-os-server` (`unifi.tecronin.uk`, `lan-only@file`, `unifi@file` transport).
+Routing is Traefik labels on `unifi-os-server` (`unifi.tecronin.uk`, `unifi-os-lan` ipAllowList, `unifi@file` transport).
 
 After a restart the container is `health: starting` until Postgres, `unifi-core`, `unifi`, and `ulp-go` are all active (up to 15 minutes, longer if `ubnt-dpkg-restore` is unpacking a pending Network app upgrade). Traefik keeps the router during that window (`allowEmptyServices`); the UI 404s only if the labels never landed. Direct check while Core is still down: `https://<lan-ip>:11443`.
 

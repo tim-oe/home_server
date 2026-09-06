@@ -11,7 +11,7 @@ services:
       - "80:80"
       - "443:443"
     environment:
-      CF_DNS_API_TOKEN: ${CF_DNS_API_TOKEN:?set CF_DNS_API_TOKEN in .env}
+      CF_DNS_API_TOKEN: ${CF_DNS_API_TOKEN}
     volumes:
       - ./traefik.yml:/etc/traefik/traefik.yml:ro
       - ./dynamic:/dynamic:ro

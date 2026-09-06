@@ -12,7 +12,7 @@ services:
     environment:
       SONAR_JDBC_URL: "jdbc:postgresql://db:5432/sonar"
       SONAR_JDBC_USERNAME: "sonar"
-      SONAR_JDBC_PASSWORD: ${SONAR_DB_PASSWORD:?set SONAR_DB_PASSWORD in .env}
+      SONAR_JDBC_PASSWORD: ${SONAR_DB_PASSWORD}
     volumes:
       - "sonarqube-data:/opt/sonarqube/data"
       - "sonarqube-extensions:/opt/sonarqube/extensions"
@@ -38,7 +38,7 @@ services:
     restart: "unless-stopped"
     environment:
       POSTGRES_USER: "sonar"
-      POSTGRES_PASSWORD: ${SONAR_DB_PASSWORD:?set SONAR_DB_PASSWORD in .env}
+      POSTGRES_PASSWORD: ${SONAR_DB_PASSWORD}
       POSTGRES_DB: "sonar"
     volumes:
       - "postgresql:/var/lib/postgresql"
