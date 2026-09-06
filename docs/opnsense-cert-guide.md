@@ -2,6 +2,13 @@
 
 Complete guide for creating and trusting self-signed certificates for OPNsense web GUI access.
 
+> **The Internal CA created here also signs the two Omada switch web UIs.** Once the CA is trusted on a
+> host per Parts 4–6, that host trusts every internal certificate issued from it, so the switch
+> certificates need no additional trust step. See
+> [`omada-switch-hardening.md`](omada-switch-hardening.md) Part 3 — the switches need **RSA 2048** keys and
+> an **825-day or shorter** lifetime, and their certificates must be exported as PEM together with the
+> private key.
+
 ## Table of Contents
 - [Prerequisites](#prerequisites)
 - [Part 1: Create Certificate Authority in OPNsense](#part-1-create-certificate-authority-in-opnsense)

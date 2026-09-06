@@ -1,6 +1,6 @@
 # LAN-Only Default Routing
 
-> **Implementation order: step 2 of 4.**
+> **Implementation order: step 3 of 5.**
 > Status: reviewed 2026-09-05, ready to implement.
 > Prerequisites: [`security-quick-wins.md`](security-quick-wins.md) items 2 (deprecated `unifi` stack
 > deleted, port 8443 free) and 4 (wiki `6875:80` removed). Step 0 below checks the first; the second is

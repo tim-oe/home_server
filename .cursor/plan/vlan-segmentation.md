@@ -1,12 +1,15 @@
 # Network Segmentation
 
-> **Implementation order: step 4 of 4.**
-> Status: reviewed 2026-09-05, design ready; implementation gated on hardware.
-> Prerequisites: [`lan-only-default-routing.md`](lan-only-default-routing.md) complete and
+> **Implementation order: step 5 of 5.**
+> Status: reviewed 2026-09-05, design ready; **both switches are now installed**, so the Phase 0 bench
+> window has closed and its steps have to be done in place.
+> Prerequisites: [`switch-hardening.md`](switch-hardening.md) Phases 1–2 (step 1) — VLAN configuration
+> entered on a switch that does not persist its config is lost at the next reboot, and that fault is
+> confirmed on both switches. Then [`lan-only-default-routing.md`](lan-only-default-routing.md) complete and
 > [`security-quick-wins.md`](security-quick-wins.md) items 1–11 complete, so the exception list in its
-> item 5 and the cross-segment rules here already agree. Before the first console session: both
-> `SG2210XMP-M2` switches on hand and bench-tested (Phase 0), and the openHAB bindings list confirmed
-> (see Cross-segment dependencies).
+> item 5 and the cross-segment rules here already agree. Before the first console session: the openHAB
+> bindings list confirmed (see Cross-segment dependencies).
+> Phase 3 of [`switch-hardening.md`](switch-hardening.md) folds into the phases below.
 > Followed by: nothing planned; `docs/network-layout.md` becomes the record of the result.
 
 Break the flat `192.168.1.0/24` into security zones so a compromised IoT device, TV, phone, or guest
@@ -172,6 +175,45 @@ ARC can burst to line rate, but sustained transfers such as a backup run are dis
 That makes routing through pf far less likely to be the limiting factor than it first appeared, and it is
 the main reason to measure before considering the escape hatch below.
 
+**Measured baseline, 2026-09-05** (tec-desktop `192.168.1.35` ↔ NAS `192.168.1.30`, `-P 4`, 60s each
+direction). Taken on a **live network with other users and TV streaming active**, which does not undermine
+the result — background traffic can only subtract from measured throughput, never add to it, so a run that
+reaches line rate under contention establishes the ceiling regardless. **Both directions run at line
+rate**:
+
+- **tec-desktop → NAS: 9.41 Gbit/s**, 65.7 GBytes, 15192 retransmits.
+- **NAS → tec-desktop: 9.42 Gbit/s**, 65.8 GBytes, 95 retransmits.
+
+9.4 Gbit/s is the practical TCP ceiling for 10GbE at standard MTU, so **the whole path is clean end to
+end** — AOC, both switches, `bridge0`, the media converter and both NICs. Nothing here is a bottleneck.
+
+An earlier `--bidir` run showed the tec-desktop → NAS direction averaging only 6.79 and falling. That was
+**contention, not a fault**: it made the Atom C3758 send 9.41 and receive 6.79 simultaneously, roughly
+16 Gbit/s aggregate across 8 streams on 8 low-clock cores, and receiving is the expensive side, so its
+receive path starved. Measured on its own the same direction reaches full line rate. **The practical
+lesson is that `--bidir` measures the endpoints, not the link** — use unidirectional runs to qualify
+cabling on this network.
+
+**The 160x retransmit gap between the directions is expected and is not a defect.** 15192 retransmits
+across roughly 48 million segments is about 0.03%, and TCP congestion control only finds a link's ceiling
+by provoking loss, so a flow pinned at line rate is *supposed* to show some. The direction into the NAS
+loses more because it ends in the deeper, slower path — `bridge0`, the media converter, then an Atom's
+receive ring — and brief queue overruns there cost nothing once TCP recovers, which is exactly what the
+identical sender and receiver totals show. **What would change this reading is CRC/FCS errors on the
+switch SFP+ ports.** Retransmits with zero CRC are host and buffer drops; retransmits alongside a steady
+CRC trickle would mean mild optical degradation being masked by TCP recovery. That counter read is the one
+check still worth doing.
+
+The live-network conditions matter here rather than for the headline figures: some share of those
+retransmits is contention with other traffic rather than the NAS receive path, which makes an already
+benign number more benign still. **A quiet-hours re-run is worth doing for attribution, not for the
+result** — it would tell you what the retransmit floor actually is on an idle path, and that is the figure
+to compare against after the VLAN work. Schedule it accordingly: a 60s run at line rate saturates the
+inter-site trunk, so these tests degrade everyone else's traffic while they run.
+
+Note this ceiling is well above the 4–5.6 Gbps the pool can sustain, so it confirms the paragraph above:
+the disks bound a real backup run, not the network.
+
 If routing proves too slow, the escape hatch is more expensive than it first looks. Putting the NAS and
 tec-desktop in the same Servers VLAN would let their traffic be switched across the inter-site trunk
 without touching the Vault — but the NAS is at Site A and tec-desktop at Site B, and **both of Site A's
@@ -192,8 +234,9 @@ front; measure first.
   device on both switches, and `pfil_member=0` makes per-port filtering impossible.
 - **Phased, each phase independently useful.** No big-bang cutover on the box that is simultaneously
   router, DNS, DHCP, and VPN concentrator. The one deliberate exception is folding Phase 4 into Phase 1's
-  outage when both switches are bench-tested together, because that is a second switch swap, not a second
-  router change.
+  outage, because that is switch-side port work rather than a second router change. This was originally
+  conditional on bench-testing both switches together; now that both are installed it is simply the right
+  thing to do, and it removes the interim where Site B sits untagged in Servers.
 
 ## Current state
 
@@ -212,6 +255,25 @@ From [`docs/opnsense-bridge-guide.md`](../../docs/opnsense-bridge-guide.md),
 Some home automation is USB-attached (`/dev/ttyACM0` on tec-desktop) rather than IP, so it carries no
 network risk and needs no segment.
 
+### Both switches are already installed
+
+This plan was written expecting to configure both switches on a bench before either was racked. That did
+not happen, and the consequences run through Phase 0 and Phase 1:
+
+- **Site A is live and load-bearing.** It carries the LAN and powers `tec-pi-mgr` and AP 1 over PoE, with
+  their injectors already removed. Phase 1 step 7 is therefore done.
+- **Site B is installed** at the desk.
+- Both are named `tec-sw-a` and `tec-sw-b` with static reservations by MAC in Dnsmasq. They shipped sharing
+  the default name `SG2210XMP-M2`, which collided because Dnsmasq keys its DNS record off the DHCP-supplied
+  hostname and the second lease overwrote the first.
+- **Neither switch reliably persists its configuration yet**, which is the whole reason
+  [`switch-hardening.md`](switch-hardening.md) became step 1. Do not enter any VLAN configuration below
+  until its Phase 1 reboot test passes on both switches, or the work will silently evaporate.
+- The **10m inter-site AOC** never got its side-by-side bench test, but has now been **verified in place
+  (2026-09-05)**: 60 seconds per direction at 9.41 and 9.42 Gbit/s, which is line rate both ways. That
+  risk is retired and the old dumb switches are no longer needed as a fallback for it. See Storage path
+  trade-off for the numbers; only the switch CRC/FCS counter read is outstanding.
+
 ## Phase 0 — prep, no downtime
 
 1. Config backup: System → Configuration → Backups.
@@ -221,26 +283,59 @@ network risk and needs no segment.
    on `ixl1`'s switch rather than over WiFi. Then assign it as the rescue segment with a static
    `192.168.99.1/24`, a small DHCP range, and verify a laptop plugged straight in reaches the web UI.
    This is the only Phase 0 step that touches the live bridge; everything else here is off-box.
-3. Configure both switches on the bench, before they go in the rack: VLANs, access ports, trunk ports,
-   management IP in the Management VLAN. Because they are identical, build Site A, export the config, load
-   it onto Site B, and change only the port map and management address. Label every port.
-4. **Link the two switches with the 10m inter-site AOC while they are still on the bench**, before either
-   goes in the rack. This is the one termination pair that is new at both ends. Confirm 10G full duplex,
-   DDM Rx/Tx power in range, and a clean multi-minute `iperf3`. Also export a config backup from both,
-   which is what makes either one a usable spare for the other.
-5. Stage the IoT, Guest, Clients, and Management networks in the UniFi controller with their VLAN IDs, so
+3. **[`switch-hardening.md`](switch-hardening.md) Phases 1–2 must be complete on both switches**, which
+   replaces the bench-configuration step this plan originally had here. That covers the save-and-reboot
+   test, credentials, management protocols, the certificate, and the config exports. Nothing below is
+   durable until it passes.
+4. Configure the VLANs, access ports and trunk ports. Because the switches are identical, build Site A,
+   export the config, load it onto Site B, and change only the port map and management address. Label every
+   port. **Save on each switch after every change set** — see step 3 for why that sentence is here.
+   The management IP move into the Management VLAN is deliberately *not* done here; it is Phase 1, on the
+   console, after the rescue port is proven.
+5. **Load-test the 10m inter-site AOC in place** — **done 2026-09-05.** 60 seconds per direction between
+   tec-desktop and the NAS returned **9.41 and 9.42 Gbit/s**, line rate both ways, so the cable that never
+   got its bench test is now qualified under sustained load. Numbers and the retransmit analysis are in
+   Storage path trade-off. Two small things remain:
+   - **Read the CRC/FCS error counters** on Site A SFP+ 2 and Site B SFP+ 1. This is the check that gives
+     the retransmit figures their meaning: zero CRC means the 15192 retransmits on the NAS-bound direction
+     were queue and host drops, which is normal for a flow sitting at line rate. A steady CRC trickle would
+     instead mean mild optical degradation that TCP is successfully hiding.
+   - Read **DDM Rx/Tx power** on both switches' SFP+ ports, expecting roughly -1 to -7 dBm. Some AOC
+     assemblies report partial or no DDM data — empty fields are the cable, not a fault.
+   - **Optionally re-run during quiet hours.** The baseline was taken with other users and TV streaming
+     active. That cannot have inflated the throughput figures, so the pass stands, but an idle-path run
+     would establish the true retransmit floor and make the post-VLAN comparison sharper. Worth pairing
+     with the counter read, since both are about attribution rather than the headline number.
+
+   Method notes worth keeping, because this link will be re-tested after the VLAN work: **use
+   unidirectional runs, not `--bidir`.** A `--bidir` run here reported the NAS-bound direction at 6.79 and
+   falling, which was the Atom C3758 starving its own receive path while also sending at line rate — it
+   measures the endpoints rather than the link. And **do not use a Pi as an endpoint**: the Pi 5 is 1GbE
+   and will report a clean gigabit while proving nothing about a 10G link.
+
+   ```bash
+   iperf3 -c tec-truenas.localdomain -t 60 -P 4        # tec-desktop -> NAS
+   iperf3 -c tec-truenas.localdomain -t 60 -P 4 -R     # NAS -> tec-desktop
+   ```
+
+   The `iperf3` **tec-desktop ↔ `fort-apache`** test is no longer needed — it existed to separate the AOC
+   from the NAS and from pf, and both directions passing at line rate has done that. Keep it in mind only
+   if a future re-test regresses: it crosses Site B switch, AOC, Site A switch and `ixl1` and nothing else.
+   It is the awkward one, since `os-iperf` is a community plugin whose instances are single-use on a random
+   port and it does not open the firewall for that port itself.
+6. Stage the IoT, Guest, Clients, and Management networks in the UniFi controller with their VLAN IDs, so
    the APs already know them when their ports become trunks.
 
-## Phase 1 — Site A switch in, bridge out
+## Phase 1 — bridge out, VLAN interfaces in
 
 Do these together. Both need a console and both interrupt connectivity, so one outage is better than two.
 
-Site B keeps its dumb switch for now and stays a single zone — and that zone is **Servers**, the most
-trusted one, because tec-desktop is on it and cannot be anywhere else. So between Phase 1 and Phase 4 the
-rotating cast of devices at Site B sits untagged in the segment that can reach everything, which is the
-situation today, not a regression, but it means Phase 4 is what actually delivers the isolation for that
-room. Buying both switches together makes this interim avoidable: since they arrive on the same order and
-are bench-configured together, do Phase 4 in the same outage as Phase 1 and skip it entirely.
+**Both switches are already installed, so fold Phase 4 into this outage.** The original plan treated the
+Site B swap as a later step, which left the rotating cast of devices at Site B untagged in **Servers** —
+the most trusted zone, because tec-desktop is on it and cannot be anywhere else — for the whole gap between
+Phase 1 and Phase 4. That gap is the situation today rather than a regression, but there is now no reason
+to keep it: both switches are in place and configurable, so doing Phase 4's port assignments in this same
+outage skips the interim entirely.
 
 1. Do the rest **on the physical console**, not over SSH or the web UI.
 2. Remove `bridge0`. Assign `ixl0` directly to the NAS segment and `ixl1` as the trunk parent, left
@@ -256,9 +351,18 @@ are bench-configured together, do Phase 4 in the same outage as Phase 1 and skip
 6. **Renumber the NAS**, from its own console or IPMI KVM, because the change severs the session you are
    in: address `192.168.10.x/24`, gateway `192.168.10.1`, DNS `192.168.10.1`. Check the SMB and NFS
    exports' allowed-network lists still contain `192.168.1.0/24` (Servers is unchanged, so they should),
-   and give the NAS a static DHCP lease or a DNS override so `tec-nas.localdomain` resolves to the new
-   address before tec-desktop tries to remount. Then `mount -a` on tec-desktop and check `/mnt/brain`.
-7. Swap in the Site A switch and move AP 1 and tec-pi-mgr onto PoE ports, dropping their injectors.
+   and give the NAS a static DHCP lease or a DNS override so **both `tec-nas` and `tec-truenas`** resolve
+   to the new address before tec-desktop tries to remount — `tec-nas` is the name `src/etc/fstab` and
+   `src/docker/Dockerfile` hardcode, and `tec-truenas` is the machine's actual hostname. See the Risks
+   entry. Then `mount -a` on tec-desktop and check `/mnt/brain` **and `/media/docker_backup`**.
+7. ~~Swap in the Site A switch and move AP 1 and tec-pi-mgr onto PoE ports, dropping their injectors.~~
+   **Already done.** Both run on switch PoE with their injectors removed. Confirm `tec-pi-mgr`'s port
+   reports **Class 4** and that Perpetual PoE is enabled *and saved*, because every step above that reboots
+   the switch now cuts its power.
+8. **Move switch management into the Management VLAN** —
+   [`switch-hardening.md`](switch-hardening.md) Phase 3 steps 1 and 2, which belong in this console session
+   because they sever your own path to the switch UI by design. Then scope the switch management access
+   control to Management plus the VPN range.
 
 ## Phase 2 — isolate the coax segment
 
@@ -307,20 +411,36 @@ AP 1 on a proper trunk port makes this reliable rather than something to test.
 3. Enable client isolation on the Guest SSID.
 4. Repeat for AP 2 if the MoCA tag test passed, adding 30 and 40 tagged to RJ45 3 as described in Phase 2.
 
-## Phase 4 — Site B switch
+## Phase 4 — Site B port assignments
 
-1. Swap in the second SG2210XMP-M2. SFP+ 1 takes the inter-site run, SFP+ 2 takes tec-desktop at 10G in
-   the Servers VLAN.
+The switch swap this phase was built around has already happened, so what remains is the port-to-zone
+work. Per Phase 1, do it in that same outage rather than as a later pass.
+
+1. Confirm SFP+ 1 carries the inter-site run and SFP+ 2 carries tec-desktop at 10G in the Servers VLAN.
 2. Assign each mixed device its own access port and zone. Anything you cannot positively identify goes to
    IoT, not Clients.
 3. Use **Port Isolation** for anything that has no reason to talk to its neighbours.
-4. **Disable PoE on every port that is not serving a device you chose to power.** A PoE port only energises
-   after a PD negotiates, so this is hygiene rather than a hole being closed, but it belongs with the
-   default-to-IoT rule below: an unknown device plugged into a spare port should get neither trust nor
-   power.
+4. **Disable PoE on every port that is not serving a device you chose to power**, and **admin-down the
+   unused ports** while you are there. A PoE port only energises after a PD negotiates, so the PoE half is
+   hygiene rather than a hole being closed, but it belongs with the default-to-IoT rule below: an unknown
+   device plugged into a spare port should get neither trust nor power.
 
 Because Site B's population changes, write the port-to-zone mapping into `docs/network-layout.md` and
 treat an unassigned port as IoT by default rather than leaving it in Clients.
+
+## Phase 5 — the remaining switch-side filtering
+
+[`switch-hardening.md`](switch-hardening.md) Phase 3 step 3, last because it is the only part that can
+break working hosts. Its Phases 1–2 items — DHCP Filter, DoS Defend, storm control, loopback detection,
+port security — need no VLANs and were done back in step 1.
+
+1. Build the **IP-MAC binding** table on both switches from DHCP snooping or manual entries.
+2. Enable **ARP Detection**, with the OPNsense-facing port trusted.
+3. Enable **IPv4 Source Guard** last.
+
+Both of the latter two drop traffic from statically addressed hosts that have no binding entry. Walk the
+static list first — the **NAS IPMI** is the one most likely to be forgotten, and it has just moved into
+Management where you will not notice it is unreachable until you need it.
 
 ## Zones
 
@@ -420,7 +540,12 @@ Each of these works today only because everything shares one subnet:
 - [`src/services/prometheus/README.md`](../../src/services/prometheus/README.md): step 3's "Firewall >
   Rules > LAN" for 9100 becomes the Servers VLAN interface.
 - New `docs/network-layout.md` with the port map, port-to-zone assignments for both switches, and the
-  policy matrix.
+  policy matrix. It also carries the per-switch record that
+  [`switch-hardening.md`](switch-hardening.md) depends on: management name, reserved address, certificate
+  fingerprint and **expiry date**, and where the config backups live.
+- [`../../docs/omada-switch-hardening.md`](../../docs/omada-switch-hardening.md) is the switch-side
+  walkthrough for everything in Phase 0 step 3, Phase 1 step 8, and Phase 5. Its Part 6 is the VLAN-gated
+  subset and should be read alongside those phases.
 
 ## Risks
 
@@ -432,19 +557,34 @@ Each of these works today only because everything shares one subnet:
   AOCs to the Vault, a 10m AOC between sites, and a 1m passive DAC to tec-desktop. The Vault and
   tec-desktop ends are already proven in production — including against the Intel X710, which is the most
   likely device here to reject a third-party optic — and the NAS cable does not move at all. **Only four
-  switch-side terminations are new.** TP-Link does not typically enforce vendor whitelists, but verify
-  before the cutover and keep the old switches until you have.
+  switch-side terminations were new, and all four are now in service and linked**: Site A SFP+ 1 to `ixl1`,
+  both ends of the 10m inter-site AOC, and Site B SFP+ 2 to tec-desktop on the 1m passive DAC. TP-Link does
+  not enforce a vendor whitelist on these, which is now established by observation rather than assumed.
+  **This risk is therefore retired except for marginality under load** — see below.
 
-  The 10m inter-site AOC is still the one to test first, but **identical switches remove the failure mode
-  that made it dangerous.** Both ends are new and an AOC has permanently attached transceivers, so with
+  The 10m inter-site AOC is still the one to check, but **identical switches remove the failure mode that
+  made it dangerous.** Both ends are new and an AOC has permanently attached transceivers, so with
   mismatched vendors one switch accepting the cable and the other rejecting it would have left you unable
-  to swap a single end. Two of the same switch either both accept it or both reject it, and you learn
-  which on the bench in Phase 0 step 4 rather than mid-cutover. Fallback if they reject it is discrete
-  SFP+ transceivers plus LC duplex fibre.
+  to swap a single end. Two of the same switch either both accept it or both reject it.
 
-  Verification is more than link state: 10G full duplex both ends, DDM Rx/Tx power in range (roughly -1 to
-  -7 dBm for these AOCs), then `iperf3` for several minutes with no CRC or FCS errors. A marginal optic
-  links up clean and only fails under sustained load.
+  **The bench test never happened** and cannot be recreated — its value was pre-validation with a
+  no-outage fallback, and the cable is now carrying the inter-site run. What survives is the acceptance
+  criteria, checked in place at Phase 0 step 5. Fallback if it turns out bad is discrete SFP+ transceivers
+  plus LC duplex fibre, which now means an outage; keep the old dumb switches until step 5 passes.
+
+  **Speed needs no test.** These are fixed-rate 10G assemblies that cannot fall back to 1G or 2.5G, so a
+  link that is up is a 10G link.
+
+  **What a working network does not prove is the point.** A marginal optic links up clean and fails only
+  under sustained load, and normal SSH and browsing traffic is a trickle across 10G. So the remaining
+  criteria are DDM Rx/Tx power in range (roughly -1 to -7 dBm for these AOCs) and **CRC/FCS counters that
+  stay at zero through a multi-minute `iperf3`** — not link state, which is already known good.
+
+  **Load has now been applied and the cable passed (2026-09-05).** 60 seconds per direction returned 9.41
+  and 9.42 Gbit/s — line rate both ways, moving 65.7 and 65.8 GBytes — which is not a result a marginal
+  optic can produce. **This risk is retired**, and the old dumb switches no longer need keeping as a
+  fallback for it. Read the CRC/FCS counters to close it out formally; see Storage path trade-off for why
+  the retransmit counts do not change that conclusion.
 
   These are fixed-rate 10G assemblies and will not fall back to 1G or 2.5G. TP-Link's one-module-per-switch
   advice is a thermal limit for 10GBASE-T copper modules and does not apply to AOC or passive DAC.
@@ -500,11 +640,38 @@ Each of these works today only because everything shares one subnet:
 - **Renumbering breaks hardcoded addresses.** Confirm the commented UPS addresses `192.168.1.210` and
   `192.168.1.43` in [`src/services/upsmon/docker-compose.yml`](../../src/services/upsmon/docker-compose.yml)
   really are unused, and that the NAS is reached by name everywhere rather than by its `.101` address.
+- **The NAS address in the docs is wrong, and it matters for the BMC hunt.** It answers on
+  **`192.168.1.30`** (measured 2026-09-05 during the `iperf3` baseline below), but
+  [`docs/opnsense-bridge-fix.md`](../../docs/opnsense-bridge-fix.md) captured SMB traffic to
+  `192.168.1.101` and [`security-quick-wins.md`](security-quick-wins.md) hardcodes `.101` in the `nmap`
+  commands that are supposed to prove the BMC is not on a data address. Those scans are therefore aimed at
+  the wrong host. **Establish what `.101` is today before running that verification** — on a network where
+  the whole point of item 1 is locating a BMC, an unexplained address that used to be the NAS is exactly
+  the thing not to hand-wave.
+- **The NAS answers to two names, and only one of them is its hostname.** Its system hostname is
+  **`tec-truenas`**, but two places in this repo hardcode **`tec-nas`**:
+  [`src/etc/fstab`](../../src/etc/fstab) mounts `//tec-nas/backup` to `/media/docker_backup`, and
+  [`src/docker/Dockerfile`](../../src/docker/Dockerfile) writes an fstab line for `//tec-nas/clones`. So
+  `tec-nas` resolves today through a Dnsmasq host entry or CNAME rather than by being the machine's name.
+  **Phase 1 step 6 must keep `tec-nas` resolving to the new address, not just `tec-truenas`** — fixing only
+  the hostname leaves the docker backup mount pointing at nothing, and it will fail quietly at the next
+  backup rather than loudly at renumber time. Establish which name the Dnsmasq entry actually carries
+  before touching the address.
 - **AP adoption.** APs that cannot reach the controller keep serving WiFi autonomously but become
   unmanageable. Get the inform rule in place before moving them.
-- **PoE swap for tec-pi-mgr.** Moving it from an injector to a switch port means it loses power the moment
-  the switch reboots. Shut it down cleanly rather than pulling the cable, and confirm the HAT negotiates
-  802.3at on the new port before walking away.
+- **PoE swap for tec-pi-mgr — already done, and now a standing risk rather than a one-off.** It runs on
+  switch PoE with its injector removed, so it loses power the moment `tec-sw-a` reboots, and several steps
+  in this plan and in [`switch-hardening.md`](switch-hardening.md) end in a reboot. **Perpetual PoE must be
+  enabled and saved**; unsaved, it is not enabled at the only moment it matters. Confirm the port negotiates
+  **802.3at Class 4** rather than Class 3, which boots the Pi and then browns it out under SSD load. Shut
+  the Pi down cleanly rather than pulling power from a running SSD.
+- **Switch configuration silently not persisting.** Both switches discard configuration on reboot unless
+  **Save** is pressed — confirmed on a plain reboot, not just after firmware updates. Entering the VLAN
+  configuration below without saving means a power event weeks later reverts your layer 2 to defaults while
+  OPNsense keeps expecting tagged frames. This is why [`switch-hardening.md`](switch-hardening.md) is
+  step 1 and why Phase 0 will not start until its reboot test passes.
+- **Certificate expiry on the switch UIs.** The web UI certificates are manual and expire on an 825-day
+  clock with nothing automated to catch it. Recorded in `docs/network-layout.md`.
 
 ## Verification
 
@@ -517,16 +684,29 @@ Each of these works today only because everything shares one subnet:
 - From tec-weather: `mysql -h 192.168.1.35 -u weather -p` connects, and the WeatherWatch dashboard at
   `weather.tecronin.uk` still shows fresh readings. `sudo apt update` succeeds.
 - From the NAS shell: `ping 1.1.1.1` and an update check succeed; nothing internal is reachable.
-- From a Clients laptop: the OPNsense GUI, both switch UIs, and `ssh tec-pi-mgr` all work.
+- From a Clients laptop: the OPNsense GUI and `ssh tec-pi-mgr` work. **Both switch UIs answer only from the
+  designated admin host and over the VPN, and are refused from an ordinary Clients host and from IoT.**
+  Two layers do this: pf permits Clients → Management on 443 and 22, and each switch's own access control
+  then narrows that to the one admin address — the same "VPN plus one designated admin host" treatment the
+  NAS IPMI gets. The admin host needs a DHCP reservation for its address to be nameable in that rule.
 - Casting from a phone to a TV — expect failure until mDNS reflection is configured, then verify.
-- tec-desktop links at 10G on Site B SFP+ 2, and `iperf3` to the NAS is compared against a pre-change
-  baseline.
+- tec-desktop links at 10G on Site B SFP+ 2, and `iperf3` to the NAS is compared against the **pre-change
+  baseline recorded in Storage path trade-off: 9.41 and 9.42 Gbit/s, line rate in both directions.** Use
+  unidirectional runs for the comparison, not `--bidir`. A post-change figure materially below that
+  implicates the pf path this plan introduces, since there is no other headroom left to lose.
 - AP 1 and tec-pi-mgr both come up on PoE with their injectors removed; power-cycling tec-pi-mgr from the
-  switch UI works.
-- The 10m inter-site AOC links at 10G full duplex between the two switches on the bench, with DDM power in
-  range and a clean multi-minute `iperf3`, before either switch is racked.
+  switch UI works. `tec-pi-mgr`'s port reports **Class 4**, and the Pi survives a switch reboot with
+  Perpetual PoE enabled and saved.
+- The 10m inter-site AOC links at 10G full duplex between the two switches **in place**, with DDM power in
+  range and CRC/FCS counters still at zero after a loaded `iperf3`. This never got its side-by-side bench
+  test, so it is verified by observation on the live run instead — **throughput done 2026-09-05**, 9.41
+  and 9.42 Gbit/s over 60s per direction, with only the counter read outstanding.
 - A config export exists for both switches and is stored off-switch, so either can be rebuilt as the
   other. Neither switch has static routing or inter-VLAN routing enabled.
+- **A configuration change survives a reboot on each switch** — the step 1 test, re-confirmed after the
+  VLAN work, because that is the change most expensive to lose.
+- A rogue DHCP server plugged into an access port hands out nothing, and legitimate clients still get
+  leases from OPNsense.
 - From a client: all `https://<svc>.tecronin.uk` still load once `lan-only` includes the new range.
 - Prometheus targets all `up`; controller shows both APs adopted.
 - Nightly offen backup and the rclone sync to Google Drive both still complete.

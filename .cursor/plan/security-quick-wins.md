@@ -1,8 +1,11 @@
 # Security Quick Wins
 
-> **Implementation order: step 1 (items 1–5) and step 3 (items 6–11) of 4.**
+> **Implementation order: step 2 (items 1–5) and step 4 (items 6–11) of 5.**
 > Status: reviewed 2026-09-05, ready to implement.
-> Prerequisites: none. Items 2 and 4 must be done before
+> Prerequisites: [`switch-hardening.md`](switch-hardening.md) Phases 1–2 (step 1), which came first because
+> both switches went in live and unhardened with a confirmed config-persistence fault. Nothing in this plan
+> depends on it technically beyond Vaultwarden holding the two switch passwords.
+> Items 2 and 4 must be done before
 > [`lan-only-default-routing.md`](lan-only-default-routing.md) starts (they free port 8443 and remove
 > the wiki host port that `APP_PROXIES` relies on). Items 6–11 resume after that plan is verified.
 > Followed by: [`vlan-segmentation.md`](vlan-segmentation.md).
@@ -40,8 +43,15 @@ system, independent of TrueNAS, powered whenever the NAS is plugged in — even 
 It offers remote power control, a KVM console, and virtual media. Reaching it means owning the hardware
 that holds every backup, and none of ZFS permissions, TrueNAS accounts, or disk encryption apply at that
 layer. Supermicro BMCs have a long history of severe vulnerabilities, including unauthenticated credential
-disclosure and the `cipher zero` authentication bypass, and they are patched rarely if ever. This is listed
-first because unlike everything below it, a compromise here is not recoverable by reinstalling software.
+disclosure and the `cipher zero` authentication bypass, and they are patched rarely if ever. It is listed
+first within this plan because unlike everything below it, a compromise here is not recoverable by
+reinstalling software.
+
+**Severity is not the same as urgency, though.** The BMC is only reachable by something already on the LAN,
+it is never port-forwarded, and its permanent fix is [`vlan-segmentation.md`](vlan-segmentation.md) placing
+it in Management behind a rule that admits the VPN and one admin host. So this is a top item, not a
+drop-everything one — highest blast radius, but conditional on an attacker having arrived first. What
+follows below are the steps that shrink the window in the meantime.
 
 Unlike the other items, this one starts with a question rather than a fix — the exposure is likely but
 unconfirmed.
@@ -279,7 +289,12 @@ near the top of the order, not the bottom.
 ## 10. Admin surfaces the plans above do not touch
 
 Three things are larger holes than anything in items 5 through 9 and are absent from every plan because
-they live outside the repo. Listing them so they are at least decided rather than forgotten:
+they live outside the repo. Listing them so they are at least decided rather than forgotten.
+
+**The two switch UIs used to be on this list and now have a plan of their own**, since the switches went in
+live with default credentials, plaintext management protocols and a factory certificate:
+[`switch-hardening.md`](switch-hardening.md), step 1, with the walkthrough in
+[`docs/omada-switch-hardening.md`](../../docs/omada-switch-hardening.md).
 
 - **SSH on tec-desktop.** Key-only (`PasswordAuthentication no`), `PermitRootLogin no`, and since the
   routing plan makes the tunnel the only remote path, consider `AllowUsers` scoped to the LAN and
@@ -298,7 +313,17 @@ they live outside the repo. Listing them so they are at least decided rather tha
 Items are independent of each other, but two of them are prerequisites for the routing plan, so the
 sequence is split around it.
 
-**Before `lan-only-default-routing.md`:**
+**Before any of this: [`switch-hardening.md`](switch-hardening.md) Phases 1–2.** Both switches are
+installed, live, and unhardened, and their configuration does not survive a reboot until saved — a fault
+confirmed on a plain reboot, not just after a firmware update. It is short, it depends on nothing here, and
+leaving it until later means re-doing any switch work done in the meantime.
+
+That puts the NAS BMC second, which is the right call rather than a compromise: the BMC has the largest
+blast radius here but is only reachable from the LAN, so it is gated on an attacker already being inside,
+and its real fix is the Management VLAN in step 5 either way. Within *this* plan the blast-radius ordering
+below still holds.
+
+**Then, before `lan-only-default-routing.md`:**
 
 1. NAS BMC — establish where it is, set dedicated mode, change credentials.
 2. Redis (delete the stack, or bind and add a password); drop `deployRedis` and `deployUnifi` from
@@ -351,8 +376,12 @@ nc -zu -w2 192.168.1.35 3478 && echo "ok 3478/udp"
 docker ps -q | xargs docker inspect -f '{{.Name}} {{.HostConfig.Privileged}}' | grep true
 
 # the BMC must not answer on the NAS data address, whatever the cable says
-sudo nmap -sU -p623,664 192.168.1.101
-nmap -p80,443,5900,5901 192.168.1.101
+# NOTE: the NAS answered on 192.168.1.30 as of 2026-09-05, not .101 as written here and in
+# docs/opnsense-bridge-fix.md. Confirm the current data address first, and find out what .101
+# is today before dismissing it -- an unexplained address that used to be the NAS is exactly
+# what item 1 is looking for.
+sudo nmap -sU -p623,664 192.168.1.30
+nmap -p80,443,5900,5901 192.168.1.30
 ```
 
 - Every service still loads through `https://<svc>.tecronin.uk`.
