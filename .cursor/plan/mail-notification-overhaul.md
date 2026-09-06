@@ -1,19 +1,41 @@
 # Mail and Notification Overhaul
 
-> **Status: not started.** Commit `4decdac` (2026-09-04) is titled "Implemented a comprehensive overhaul of
+> **Independent of the 5-step switch → quick-wins → routing → VLAN sequence, except item 8–11
+> should land before routing step 4** (WireGuard becomes the only remote route to private services;
+> the dead-man's-switch is the alert that must not ride Gotify).
+> **This file is the source of truth.** `- [x]` done, `- [ ]` open. The command or GUI path sits
+> under the item. Do remaining `[ ]` items **in order**; do not skip an open item to work a later one.
+> Status: not started. Commit `4decdac` (2026-09-04) is titled "Implemented a comprehensive overhaul of
 > the mail and notification system" but changed only this plan file and `velxio/docker-compose.yml`.
 > Verified 2026-09-05: vaultwarden still carries all six `SMTP_*` lines and the Gmail wiki comment, the wiki
 > stack still has `MAIL_DRIVER: smtp` with the `SMTP_*` block, there is no `src/bin/cron/heartbeat.sh` or
 > `src/etc/cron.d/heartbeat_cron`, and `README.md` still lists the `postfix-relay` and `uptime-kuma` TODOs.
-> All sixteen tasks below are open.
-> **Sequencing note:** [`lan-only-default-routing.md`](lan-only-default-routing.md) now depends on this
-> plan's email path for the one alert that must not ride Gotify (DDNS drift while abroad). Have the
-> dead-man's-switch in place before that plan's step 4, which is where WireGuard becomes the only remote
-> route to the private services.
+> Written earlier. Checklist header 2026-09-06.
 
 Stop sending mail from the estate entirely, and fix notification reliability where it actually matters: an
 external dead-man's-switch so host and ISP outages reach a phone that is off the LAN, and Gotify hardened
 against Android Doze.
+
+## Remaining — do in this order
+
+Item 1 gates everything else. Items 15–16 are optional follow-ons; do not start them while 1–14 are open.
+
+- [ ] **1** Confirm no Vaultwarden account uses email 2FA; move any that do to TOTP first.
+- [ ] **2** Remove the six `SMTP_*` lines and the Gmail wiki link comment from the vaultwarden stack.
+- [ ] **3** Collapse the wiki mail block to `MAIL_DRIVER: log` (verify against pinned `26.05.4`).
+- [ ] **4** Redeploy both stacks; confirm they start clean with no mail configuration.
+- [ ] **5** Verify Vaultwarden admin-panel onboarding: invite, then `/#/signup` with `SIGNUPS_ALLOWED=false`.
+- [ ] **6** Verify admin-created users and an admin password change on BookStack.
+- [ ] **7** Delete `SMTP_*` from both host `.env` files and revoke the Gmail app password.
+- [ ] **8** Add `src/bin/cron/heartbeat.sh` (array, disk, docker; ping `/fail` on a failed check).
+- [ ] **9** Add `src/etc/cron.d/heartbeat_cron` at `*/10`, `MAILTO=""`, `HC_PING_URL` in `/etc/environment`.
+- [ ] **10** Create the healthchecks.io check at 10m period / 20m grace, Gmail and Telegram, not Gotify.
+- [ ] **11** Confirm the switch fires: stop the cron and wait out the grace period.
+- [ ] **12** Fix Gotify battery optimisation and foreground service; verify alerts off-LAN.
+- [ ] **13** Update `README.md` — drop `postfix-relay` TODO; retarget `uptime-kuma` at external monitoring.
+- [ ] **14** Update `docs/service_configuration.md` — drop Vaultwarden SMTP; document `/#/signup`.
+- [ ] **15** Optional: external HTTP monitor on `gotify.tecronin.uk`.
+- [ ] **16** Optional: ntfy with UnifiedPush if Doze still delays Gotify.
 
 The trigger was Gmail SMTP credentials expiring and breaking notifications. The conclusion after working the
 problem is that the mail path should be deleted rather than rebuilt — nothing in the estate needs to send
@@ -255,27 +277,4 @@ that address tests the entire chain from outside the house, and alerts over Tele
 out by the thing it is monitoring. Pair it with a `postqueue -p` depth check in `heartbeat.sh` to catch stuck
 mail as well as dead mail.
 
-## Task list
-
-- [ ] Confirm no Vaultwarden account uses email 2FA; move any that do to TOTP first. This gates everything
-  else.
-- [ ] Remove the six `SMTP_*` environment lines and the Gmail wiki link comment from the vaultwarden stack.
-- [ ] Collapse the wiki stack's mail block to `MAIL_DRIVER: log`, verifying the driver name against the pinned
-  `26.05.4` image.
-- [ ] Redeploy both stacks and confirm they start clean with no mail configuration.
-- [ ] Verify admin-panel onboarding end to end on Vaultwarden: invite, then register at `/#/signup` with the
-  same address while `SIGNUPS_ALLOWED=false`.
-- [ ] Verify admin-created users and an admin password change on BookStack.
-- [ ] Delete the `SMTP_*` lines from both host `.env` files and revoke the Gmail app password.
-- [ ] Add `src/bin/cron/heartbeat.sh` with array, disk, and docker checks, pinging `/fail` on a failed check.
-- [ ] Add `src/etc/cron.d/heartbeat_cron` at `*/10`, with `MAILTO=""`, and set `HC_PING_URL` in
-  `/etc/environment`.
-- [ ] Create the healthchecks.io check at 10m period / 20m grace, alerting to Gmail and Telegram, not Gotify.
-- [ ] Confirm the switch fires: stop the cron and wait out the grace period.
-- [ ] Fix Gotify battery optimisation and foreground service on the phone, and verify alerts arrive off-LAN.
-- [ ] Update `README.md` — drop the `postfix-relay` TODO entirely, and retarget the `uptime-kuma` TODO at
-  external monitoring.
-- [ ] Update `docs/service_configuration.md` — remove the Vaultwarden "SMTP configuration" step and the
-  `SMTP_*` keys, and document the `/#/signup` onboarding flow.
-- [ ] Optional follow-on: external HTTP monitor on `gotify.tecronin.uk` from UptimeRobot or Better Stack.
-- [ ] Optional follow-on: ntfy with UnifiedPush if Doze still delays Gotify notifications.
+Tick **Remaining** at the top. Detail for each item is in the sections above.

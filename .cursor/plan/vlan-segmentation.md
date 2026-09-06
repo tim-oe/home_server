@@ -1,16 +1,16 @@
 # Network Segmentation
 
 > **Implementation order: step 5 of 5.**
-> Status: reviewed 2026-09-05, design ready; **both switches are now installed**, so the Phase 0 bench
-> window has closed and its steps have to be done in place.
-> Prerequisites: [`switch-hardening.md`](switch-hardening.md) Phases 1–2 (step 1) — VLAN configuration
-> entered on a switch that does not persist its config is lost at the next reboot, and that fault is
-> confirmed on both switches. Then [`lan-only-default-routing.md`](lan-only-default-routing.md) complete and
-> [`security-quick-wins.md`](security-quick-wins.md) items 1–11 complete, so the exception list in its
-> item 5 and the cross-segment rules here already agree. Before the first console session: the openHAB
+> **This file is the source of truth.** `- [x]` done, `- [ ]` open. Do remaining `[ ]` items **in
+> order**; do not skip an open item to work a later one.
+> Prerequisites: [`switch-hardening.md`](switch-hardening.md) Phases 1–2 (done). Then
+> [`lan-only-default-routing.md`](lan-only-default-routing.md) and
+> [`security-quick-wins.md`](security-quick-wins.md) items 1–11, so the exception list in quick-wins
+> item **6** and the cross-segment rules here agree. Before the first console session: openHAB
 > bindings list confirmed (see Cross-segment dependencies).
-> Phase 3 of [`switch-hardening.md`](switch-hardening.md) folds into the phases below.
-> Followed by: nothing planned; `docs/network-layout.md` becomes the record of the result.
+> Switch-hardening Phase 3.1 (management VLAN) folds in here; 3.2/3.3 skipped.
+> Followed by: nothing planned; `docs/network-layout.md` is the inventory.
+> Written 2026-09-05. Checklist header 2026-09-06.
 
 Break the flat `192.168.1.0/24` into security zones so a compromised IoT device, TV, phone, or guest
 laptop can no longer reach the Docker host, the NAS, or the firewall.
@@ -19,6 +19,25 @@ Follow-on to [`lan-only-default-routing.md`](lan-only-default-routing.md), which
 internet-facing surface, and [`security-quick-wins.md`](security-quick-wins.md), which closes the worst
 individual holes. This one fixes the trust model both of those lean on: `lan-only@file` trusts all of
 `192.168.1.0/24`, and that subnet currently contains everything you own.
+
+## Remaining — do in this order
+
+New devices: trusted SSID or a Clients port + DHCP. No MAC registry.
+
+Already done: inter-site AOC load-test (0.5, 2026-09-05); Site A PoE for AP 1 and tec-pi-mgr (1.7);
+switch-hardening Phases 1–2 (0.3, 2026-09-06). **Skipped:** Phase 5 IP-MAC / ARP Detection / Source Guard
+(per-device paperwork). CRC/FCS and DDM from the AOC test are still open under 0.5 leftover.
+
+- [ ] **0.1** OPNsense config backup (also [`appliance-config-backups.md`](appliance-config-backups.md)).
+- [ ] **0.2** `igc1` out of `bridge0`, rescue `192.168.99.1/24`.
+- [ ] **0.4** VLAN / access / trunk ports on both switches; Save after every change set.
+- [ ] **0.5 leftover** CRC/FCS on Site A Te1/0/9 and Site B Te1/0/10; DDM Rx/Tx.
+- [ ] **1** Bridge out, VLAN interfaces in (includes Site B port map in the same outage).
+- [ ] **2** Isolate the coax / Media segment.
+- [ ] **3** WiFi VLANs (SSIDs, not per-MAC).
+- [ ] **4** Site B remaining port-to-zone (unassigned = IoT default).
+
+Phase detail stays in the sections below.
 
 ## Physical topology today
 
@@ -225,6 +244,11 @@ front; measure first.
 
 ## Decisions
 
+- **Home network, not a fortress.** Lock the front door (WAN, Traefik default-deny) and the obvious
+  back doors (BMC, Redis, published admin). Do **not** add a registration step for every new phone,
+  laptop, or ESP. Trusted SSID / Clients port + DHCP is how a device joins. Guest and IoT SSIDs are
+  the jail, not a MAC table on the switch. Sitting in the house, you reach NAS, wiki, and switch UIs
+  without VPN. WireGuard is for away.
 - **`192.168.1.0/24` stays with the servers.** Sixteen split-DNS overrides point at `192.168.1.35`,
   `lan-only@file` trusts that range, `/etc/fstab` mounts the NAS, and Prometheus scrapes six hosts by
   name. Keeping the server subnet intact means none of that changes. Everything *else* gets renumbered.
@@ -266,9 +290,10 @@ not happen, and the consequences run through Phase 0 and Phase 1:
 - Both are named `tec-sw-a` and `tec-sw-b` with static reservations by MAC in Dnsmasq. They shipped sharing
   the default name `SG2210XMP-M2`, which collided because Dnsmasq keys its DNS record off the DHCP-supplied
   hostname and the second lease overwrote the first.
-- **Neither switch reliably persists its configuration yet**, which is the whole reason
-  [`switch-hardening.md`](switch-hardening.md) became step 1. Do not enter any VLAN configuration below
-  until its Phase 1 reboot test passes on both switches, or the work will silently evaporate.
+- **Startup config survives reboot.** `copy running-config startup-config` plus a `backup-config`
+  copy, 2026-09-06. **Both reboot tests passed the same day** — hostname, HTTP lockdown, DHCP
+  Filter, DoS defend, unused-port shutdowns and Site A PoE Class 4/high all came back. See
+  [`docs/network-layout.md`](../../docs/network-layout.md).
 - The **10m inter-site AOC** never got its side-by-side bench test, but has now been **verified in place
   (2026-09-05)**: 60 seconds per direction at 9.41 and 9.42 Gbit/s, which is line rate both ways. That
   risk is retired and the old dumb switches are no longer needed as a fallback for it. See Storage path
@@ -428,19 +453,12 @@ work. Per Phase 1, do it in that same outage rather than as a later pass.
 Because Site B's population changes, write the port-to-zone mapping into `docs/network-layout.md` and
 treat an unassigned port as IoT by default rather than leaving it in Clients.
 
-## Phase 5 — the remaining switch-side filtering
+## Phase 5 — remaining switch-side filtering — skipped
 
-[`switch-hardening.md`](switch-hardening.md) Phase 3 step 3, last because it is the only part that can
-break working hosts. Its Phases 1–2 items — DHCP Filter, DoS Defend, storm control, loopback detection,
-port security — need no VLANs and were done back in step 1.
-
-1. Build the **IP-MAC binding** table on both switches from DHCP snooping or manual entries.
-2. Enable **ARP Detection**, with the OPNsense-facing port trusted.
-3. Enable **IPv4 Source Guard** last.
-
-Both of the latter two drop traffic from statically addressed hosts that have no binding entry. Walk the
-static list first — the **NAS IPMI** is the one most likely to be forgotten, and it has just moved into
-Management where you will not notice it is unreachable until you need it.
+IP-MAC binding, ARP Detection, and IPv4 Source Guard would require a binding for every DHCP client
+and would break anything static that was forgotten (NAS IPMI). That is per-device paperwork this
+network will not run. DHCP Filter from switch-hardening Phase 2 is the rogue-DHCP control that stays.
+Port security / isolation were already skipped there.
 
 ## Zones
 
@@ -669,7 +687,7 @@ Each of these works today only because everything shares one subnet:
   **Save** is pressed — confirmed on a plain reboot, not just after firmware updates. Entering the VLAN
   configuration below without saving means a power event weeks later reverts your layer 2 to defaults while
   OPNsense keeps expecting tagged frames. This is why [`switch-hardening.md`](switch-hardening.md) is
-  step 1 and why Phase 0 will not start until its reboot test passes.
+  step 1. Both switches' reboot tests have passed.
 - **Certificate expiry on the switch UIs.** The web UI certificates are manual and expire on an 825-day
   clock with nothing automated to catch it. Recorded in `docs/network-layout.md`.
 

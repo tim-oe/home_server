@@ -1,20 +1,36 @@
 # Weather MariaDB Migration
 
-> **Status: not started in the repo.** Verified 2026-09-05: `src/services/mariadb` is unchanged from its
+> **Independent of the 5-step switch → quick-wins → routing → VLAN sequence.**
+> **This file is the source of truth.** `- [x]` done, `- [ ]` open. The command sits under the item
+> in **Task list**. Do remaining `[ ]` items **in order**; do not skip an open item to work a later one.
+> Status: not started in the repo. Verified 2026-09-05: `src/services/mariadb` is unchanged from its
 > never-deployed state — `deployMariadb` is still excluded from `deployAll`, `dump.sh` is unhardened, no
 > `mariadb-gdrive` sidecar, no README, `mariadb-data`/`mariadb-dumps` absent from `volumes.sh`. Phase 0
 > discovery is host-side and may have been partly done off-repo; nothing in Phases 1–4 has. Plan revised
 > `e20855c` and `beca00a`.
-> **Cross-plan dependency:** [`security-quick-wins.md`](security-quick-wins.md) item 5 and
+> **Cross-plan dependency:** [`security-quick-wins.md`](security-quick-wins.md) item **6** and
 > [`vlan-segmentation.md`](vlan-segmentation.md) both assume this plan's outcome (tec-weather and piSolar
 > writing to `192.168.1.35:3306`). Do Phase 1's `host_ip` binding here rather than in quick-wins, so the
 > stack is bound to the LAN address from its first deploy.
+> Written earlier. Checklist header 2026-09-06.
 
 Move the MariaDB instance off the station host `tec-weather` and into the `src/services/mariadb` container on
 tec-desktop. WeatherWatch stays on the station and piSolar stays on its own Pi; both are repointed at the
 container over the LAN. This finishes the one task left open in
 [`container-management-overhaul.md`](container-management-overhaul.md): "when `src/services/mariadb` is in use,
 add the rclone sidecar and put `deployMariadb` back in `deployAll`."
+
+## Remaining — do in this order
+
+Do not skip a gate. Detail and commands are in **Phases** and **Task list** below.
+
+- [ ] **0** Discovery: schemas, users, piSolar connection, count baseline. Gate G0.
+- [ ] **1** Prepare the container stack: version, secrets, sidecar, LAN bind. Gate G1.
+- [ ] **1.5** Restore rehearsal with live dump, collection still running. Gate G1.5.
+- [ ] **2** Quiesce both writers, dump, restore, recreate users, verify. Gates G2a–G2f.
+- [ ] **3** Repoint WeatherWatch and piSolar. Gate G3.
+- [ ] **4** Retire the station database; offsite restore rehearsal. Gate G4. Tick the deferred
+      MariaDB task in [`container-management-overhaul.md`](container-management-overhaul.md).
 
 The station-to-station move
 ([WeatherWatch `mariadb_trixie_migration_runbook`](https://github.com/tim-oe/WeatherWatch/blob/main/.cursor/plans/mariadb_trixie_migration_runbook_3f04a621.plan.md))

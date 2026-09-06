@@ -4,10 +4,13 @@ Lockdown walkthrough for the two `TP-Link Omada SG2210XMP-M2` switches, run in *
 Omada controller). Design decisions and ordering live in
 [`.cursor/plan/switch-hardening.md`](../.cursor/plan/switch-hardening.md); this document is the click path.
 
-| Switch | Name | Site | Notes |
-|---|---|---|---|
-| Site A | `tec-sw-a` | carries the LAN | **Live.** Powers `tec-pi-mgr` and AP 1 over PoE |
-| Site B | `tec-sw-b` | the desk | Live |
+| Switch | Name | Address | Site | Notes |
+|---|---|---|---|---|
+| Site A | `tec-sw-a` | `192.168.1.2` | carries the LAN | **Live.** Powers `tec-pi-mgr` (Tw1/0/1) and AP 1 (Tw1/0/8) over PoE |
+| Site B | `tec-sw-b` | `192.168.1.3` | the desk | Live |
+
+Applied state, MAC, firmware and certificate dates: [`network-layout.md`](network-layout.md).
+Automation account is `cursor` (Admin) with `CURSOR_SW_PWD`; SSH v2 is left on for it.
 
 Both hold static DHCP reservations by MAC in Dnsmasq (`192.168.1.2`–`.120`), per
 [`dmsaqdns.md`](dmsaqdns.md). Neither carries a switch-side static address — they stay DHCP clients so the
@@ -87,20 +90,21 @@ re-verify rather than assume.
 
 ### 3. Re-check PoE after any config loss
 
-**SYSTEM → PoE → PoE Config** for the ports serving `tec-pi-mgr` and AP 1:
+**SYSTEM → PoE → PoE Config** for the ports serving `tec-pi-mgr` (Tw1/0/1) and AP 1 (Tw1/0/8):
 
 | Setting | Value |
 |---|---|
-| PoE status | Enable |
-| Power limit / class | **802.3at (Class 4, 30W)** — the Pi 5 HAT requires `at`, not `af` |
-| Priority | High |
-| Perpetual PoE | Enable |
+| PoE Status | Enable |
+| Power Limit | **Class4 (30 W)** — the Pi 5 HAT requires `at`, not `af` |
+| PoE Priority | High |
 
 A Class 3 (15.4W) negotiation boots a Pi 5 and then browns it out under SSD load, which reads as random
-instability rather than a power problem. Confirm the port reports **Class 4**.
+instability rather than a power problem. Confirm the port reports **Class 4** and Power Status **On**.
 
-Perpetual PoE is what keeps powered devices alive through a switch firmware reboot. Enable it before the
-certificate reboot in Part 3.
+**This firmware (1.0.27) has no Perpetual PoE control** in the GUI or the CLI. The nearby page
+**SYSTEM → PoE → PoE Auto Recovery** is the opposite feature: it pings a PD and *cuts power* if the
+ping fails. Leave that off. A Site A reboot will drop `tec-pi-mgr` and AP 1; shut the Pi down
+cleanly first rather than pulling power from a running SSD.
 
 ### 4. Export a config backup
 
@@ -148,7 +152,7 @@ third earns nothing on two 8-port switches.
 |---|---|
 | **SECURITY → Access Security → HTTP Config** | HTTP **Disable** |
 | **SECURITY → Access Security → Telnet Config** | Telnet **Disable** |
-| **SECURITY → Access Security → SSH Config** | SSH **Disable** unless you will use it. If enabled: v2 only, never v1 |
+| **SECURITY → Access Security → SSH Config** | SSH **v2 only**. Left enabled for the `cursor` automation account |
 
 HTTP is enabled on port 80 by default. Telnet is plaintext CLI on the device that controls your layer 2 —
 there is no argument for leaving it on.
@@ -228,26 +232,42 @@ alternative name, so prefer DNS names and always reach the switch by name.
 
 Then export both halves from **System → Trust → Certificates**:
 
-- the certificate (`.crt`)
-- the private key (`.key`)
+- the certificate (`.crt` / PEM)
+- the private key (`.key` / PEM)
 
-Both come out PEM, which is the BASE64 encoding the switch requires.
+Do **not** download PKCS#12 (`.p12` / `.pfx`). The switch page has two slots, not one bag.
+
+OPNsense's PEM key is PKCS#8 (`BEGIN PRIVATE KEY`). The switch rejects that as **Invalid SSL key**.
+Convert to traditional PKCS#1 before Load Key ([TP-Link FAQ 2813](https://www.tp-link.com/uk/support/faq/2813/)):
+
+```bash
+openssl rsa -in tec-sw-a-cert_prv.pem -traditional -out tec-sw-a-cert_prv_pkcs1.pem
+openssl rsa -in tec-sw-b-cert_prv.pem -traditional -out tec-sw-b-cert_prv_pkcs1.pem
+```
+
+The first line of each converted file must be `BEGIN RSA PRIVATE KEY`. OpenSSL 3 needs `-traditional`.
 
 ### 3. Upload to the switch
 
 Back on **SECURITY → Access Security → HTTPS Config**, scroll to the **Load Certificate** and **Load Key**
 sections:
 
-1. **Certificate File** — the exported `.crt`
-2. **Key File** — the exported `.key`
-3. Apply
+1. **Certificate File** — the exported PEM (`BEGIN CERTIFICATE`)
+2. **Key File** — the **PKCS#1** converted key (`BEGIN RSA PRIVATE KEY`)
+3. Load each (confirm dialog → success)
 
 The certificate and key **must match each other** or HTTPS stops working entirely. Keep console or a second
 management path available until you have confirmed the new certificate loads.
 
 4. **Save.**
-5. **Reboot.** On most firmware the certificate does not take effect until the switch restarts, and Save
-   must happen first or the upload goes with everything else. Site A: Perpetual PoE from Part 1 step 3.
+5. **Reboot.** Vendor docs say the certificate does not take effect until the switch restarts, and Save
+   must happen first or the upload is lost. Firmware **1.0.27 started presenting the Internal CA cert
+   immediately after Load**, before reboot. Still Save, then reboot, so the files survive the next restart.
+   Firmware 1.0.27 has no Perpetual PoE: Site A reboot cuts `tec-pi-mgr` and AP 1 — shut the Pi down
+   cleanly first.
+
+**Done 2026-09-06 on both switches**, including Save, reboot, and browser trust:
+`https://tec-sw-a` and `https://tec-sw-b` load secured; fingerprints unchanged after reboot.
 
 ### 4. Record the result
 
@@ -300,21 +320,19 @@ Do not apply storm control to the trunk or the 10G inter-site link.
 
 ## Part 5: Port-level hardening
 
-### 1. Port Security on fixed devices
+### 1. Port Security on fixed devices — skipped 2026-09-06
 
-**SECURITY → Port Security** — cap the MAC count on ports serving devices that do not move (`tec-pi-mgr`,
-AP 1, the Pi fleet). Up to 64 MACs per port are supported; the point is a low limit, not a high one.
+Not an internet-facing control. Extra MACs on a jack are a physical-access scenario; unused ports are
+already admin-down. Left documented so it is a choice, not an unfinished checkbox.
 
-Note the switch **will not run 802.1X and Port Security at the same time**. Since 802.1X is out of scope
-here (see below), Port Security is free to use.
+**SECURITY → Port Security** would cap learned MACs (Drop, not port shutdown). Do not apply to AP ports
+or trunks.
 
-Do not apply it to the AP ports if the AP bridges client MACs, or to the trunk.
+### 2. Port Isolation at Site B — skipped 2026-09-06
 
-### 2. Port Isolation at Site B
-
-**L2 FEATURES → Switching → Port → Port Isolation**. Site B holds a rotating cast of devices; isolate
-anything with no reason to talk to its neighbours. This separates ports *within* a VLAN, so it is useful
-now and still useful after segmentation.
+Site B is metres from Site A on the same VLAN. Isolating Tw1/0/5–6 from each other does not change what
+they can reach on the rest of the LAN (OPNsense, NAS, docker host, Site A). Inconvenience without a WAN
+win.
 
 ### 3. Close the unused ports
 
@@ -405,12 +423,14 @@ they vanish even after saving, check the boot image selection under **SYSTEM →
 may be loading a different configuration alongside the backup firmware image.
 
 **HTTPS broke after uploading the certificate.** The certificate and key do not match, or the key is not
-BASE64/PEM. Re-export both from the same OPNsense certificate entry. Recover over console, or reset and
-restore the config backup from Part 1 step 4.
+the format the switch accepts. OPNsense PEM keys are PKCS#8 (`BEGIN PRIVATE KEY`) and fail Load Key as
+**Invalid SSL key** until converted with `openssl rsa -in … -traditional`. PKCS#12 is not accepted.
+Recover over SSH, or reset and restore the config backup from Part 1.
 
-**Browser still warns after the upload.** Either the switch has not rebooted, the CA is not in that
-browser's trust store (see [`opnsense-cert-guide.md`](opnsense-cert-guide.md) Parts 4–6), or the SAN does
-not contain the name you typed in the address bar. Check with the `openssl` command above.
+**Browser still warns after the upload.** On 1.0.27 the new cert can appear before reboot. Remaining causes:
+the CA is not in that browser's trust store (see [`opnsense-cert-guide.md`](opnsense-cert-guide.md)
+Parts 4–6), or the SAN does not contain the name you typed in the address bar. Check with the `openssl`
+command above. Reach the switch by `tec-sw-a.localdomain` / `tec-sw-b.localdomain`, not only by IP.
 
 **Clients stopped getting DHCP leases.** The DHCP Filter legal-server entry names the wrong port. Disable
 the filter globally, fix the interface, re-enable.
@@ -419,6 +439,110 @@ the filter globally, fix the interface, re-enable.
 backup — which is why Part 1 step 4 comes before everything else.
 
 **`tec-pi-mgr` died during a reboot.** Perpetual PoE was not enabled, or was enabled but never saved.
+
+---
+
+## CLI that was applied (2026-09-06)
+
+Standalone SSH as `cursor`, then `enable`. Copper is `two-gigabitEthernet`, SFP+ is
+`ten-gigabitEthernet`. Save is `copy running-config startup-config`. The checklist and the
+commands that ran live in [`.cursor/plan/switch-hardening.md`](../.cursor/plan/switch-hardening.md);
+this section is a copy of the 2026-09-06 replay.
+
+DoS types must be set one at a time. Storm control needs `rate-mode kbps` *before* the numeric
+limit (`storm-control broadcast kbps 1024` is a syntax error on this firmware).
+
+### Both switches
+
+```
+configure
+hostname tec-sw-a
+no ip http server
+ip http secure-server
+ip http secure-protocol tls12
+ip http secure-ciphersuite ecdhe-a128-g-s256 ecdhe-a256-g-s384
+ip dos-prevent
+ip dos-prevent type land
+ip dos-prevent type scan-synfin
+ip dos-prevent type xma-scan
+ip dos-prevent type null-scan
+ip dos-prevent type port-less-1024
+ip dos-prevent type blat
+ip dos-prevent type ping-flood
+ip dos-prevent type syn-flood
+ip dos-prevent type win-nuke
+ip dos-prevent type ping-of-death
+ip dos-prevent type smurf
+ip dhcp filter
+ip dhcp filter server permit-entry server-ip 192.168.1.1 client-mac all interface ten-gigabitEthernet 1/0/10
+loopback-detection
+interface range two-gigabitEthernet 1/0/1-8
+ ip dhcp filter
+ loopback-detection
+ storm-control rate-mode kbps
+ storm-control broadcast 1024
+ storm-control multicast 1024
+exit
+end
+copy running-config startup-config
+copy running-config backup-config
+```
+
+On Site B the hostname is `tec-sw-b`. Legal DHCP server port is Te1/0/10 on both (OPNsense
+uplink on Site A; inter-site toward OPNsense on Site B).
+
+### Site A only — PoE keep, unused copper down
+
+```
+configure
+interface two-gigabitEthernet 1/0/1
+ power inline supply enable
+ power inline priority high
+ power inline consumption class4
+ description tec-pi-mgr
+exit
+interface two-gigabitEthernet 1/0/8
+ power inline supply enable
+ power inline priority high
+ power inline consumption class4
+ description ap-1
+exit
+interface range two-gigabitEthernet 1/0/2-6
+ shutdown
+ power inline supply disable
+exit
+interface two-gigabitEthernet 1/0/7
+ power inline supply disable
+exit
+end
+copy running-config startup-config
+copy running-config backup-config
+```
+
+### Site B only — all PoE off, unused copper down
+
+```
+configure
+interface range two-gigabitEthernet 1/0/1-8
+ power inline supply disable
+exit
+interface range two-gigabitEthernet 1/0/1-4
+ shutdown
+exit
+interface range two-gigabitEthernet 1/0/7-8
+ shutdown
+exit
+end
+copy running-config startup-config
+copy running-config backup-config
+```
+
+Tw1/0/5 and Tw1/0/6 stay up (desk devices). Telnet, SNMP and cloud were already off; SSH v2
+was left on for `cursor`. Port isolation and MAC limits were **skipped** (not internet-facing).
+GUI config backup was taken 2026-09-06. Internal CA certs loaded the same day; HTTPS still valid
+after reboot.
+
+Port map: [`network-layout.md`](network-layout.md).
 
 ---
 

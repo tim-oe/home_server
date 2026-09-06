@@ -4,7 +4,12 @@
 > `unifi-core-wait-postgres` defaults to `900`, `stop_grace_period: 2m` is set on `unifi-os-server`, and
 > `src/services/unifi-os/README.md` documents both. Section 1 was a one-time host action and leaves no
 > repo evidence; the controller has been healthy through subsequent restarts, which is the only proof it
-> can have. Nothing open.
+> can have.
+> **This file is the source of truth.** `- [x]` done, `- [ ]` open.
+
+## Remaining — do in this order
+
+Nothing open.
 
 PostgreSQL is running crash recovery after Docker SIGKILL’d the container on host reboot. unifi-core fails because it only waits 180s for connections. Unblock recovery on the host, then lengthen the wait and the container stop grace so this survives the next reboot.
 

@@ -1,14 +1,31 @@
 # UPS Monitoring
 
-> **Status: not started.** Verified 2026-09-05: no `nut_exporter` service in
+> **Independent of the 5-step switch → quick-wins → routing → VLAN sequence.**
+> **This file is the source of truth.** `- [x]` done, `- [ ]` open. The command or compose edit sits
+> under the item. Do remaining `[ ]` items **in order**; do not skip an open item to work a later one.
+> Status: not started. Verified 2026-09-05: no `nut_exporter` service in
 > `src/services/prometheus/docker-compose.yml`, no `nut` job in `prometheus.yml`, no UPS rules in
 > `grafana/provisioning/alerting/rules.yml`, no dashboard 19308. The parent plan's commit `b212641`
-> added this file, not the implementation. All seven tasks open. Prerequisite
+> added this file, not the implementation. Prerequisite
 > ([`prometheus-monitoring-stack.md`](prometheus-monitoring-stack.md)) is complete, so this can start any time.
+> Written earlier. Checklist header 2026-09-06.
 
 Follow-on to [`prometheus-monitoring-stack.md`](prometheus-monitoring-stack.md). Prometheus and Grafana
 unified alerting already exist; this adds NUT metrics for the two UPS daemons that
 [`src/services/upsmon`](../../src/services/upsmon/docker-compose.yml) already polls.
+
+## Remaining — do in this order
+
+- [ ] **1** Pin `nut_exporter` v3.3.0 (or current tag) in the prometheus compose file, two unpublished
+      services, `env_file` for NUT user/pass, DNS 192.168.1.1.
+- [ ] **2** Add `job_name: nut` with `metrics_path: /ups_metrics` and `host` labels.
+- [ ] **3** Put NUT credentials in `/mnt/raid/services/prometheus/.env` on the host; confirm each
+      `upsd` accepts that user from share-net.
+- [ ] **4** Provision four UPS alert rules to the existing Gotify contact point.
+- [ ] **5** Commit dashboard 19308 with datasource uid rewrite.
+- [ ] **6** Update prometheus README and `docs/service_configuration.md`.
+- [ ] **7** Deploy (`./gradlew deployPrometheus` then `docker compose up -d`) and confirm both nut
+      targets UP at `https://prometheus.tecronin.uk/targets`.
 
 `nut_webgui` stays. It is the live UPS UI (`upsdesktop.tecronin.uk`, `upspimgr.tecronin.uk`). This plan is
 history, dashboards, and Gotify when a unit goes on battery or the daemon disappears.
@@ -142,15 +159,4 @@ Exporter Full. Verify the ID at import; community numbering drifts. Do not use 1
 - [`docs/service_configuration.md`](../../docs/service_configuration.md): one line under Prometheus.
 - Leave `src/services/upsmon/` alone except if a NUT ACL change is required for `monuser`.
 
-## Task list
-
-- [ ] Pin `nut_exporter` v3.3.0 (or current tag) in the prometheus compose file, two unpublished services,
-      `env_file` for NUT user/pass, DNS 192.168.1.1.
-- [ ] Add `job_name: nut` with `metrics_path: /ups_metrics` and `host` labels.
-- [ ] Put NUT credentials in `/mnt/raid/services/prometheus/.env` on the host; confirm each `upsd` accepts
-      that user from share-net.
-- [ ] Provision four UPS alert rules to the existing Gotify contact point.
-- [ ] Commit dashboard 19308 with datasource uid rewrite.
-- [ ] Update prometheus README and `docs/service_configuration.md`.
-- [ ] Deploy (`./gradlew deployPrometheus` then `docker compose up -d`) and confirm both nut targets UP at
-      `https://prometheus.tecronin.uk/targets`.
+Tick **Remaining** at the top. Detail for each item is in the sections above.

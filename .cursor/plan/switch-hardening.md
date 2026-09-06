@@ -2,14 +2,12 @@
 
 > **Implementation order: step 1 of 5 (Phases 1–2). Phase 3 lands inside
 > [`vlan-segmentation.md`](vlan-segmentation.md), step 5 of 5.**
-> Status: not started, written 2026-09-05.
-> Prerequisites: the Internal CA from [`../../docs/opnsense-cert-guide.md`](../../docs/opnsense-cert-guide.md)
-> exists and is trusted on at least one admin host — it does. Nothing else: Phases 1–2 are switch-local and
-> touch no service in this repo.
-> **Gates step 5.** VLAN configuration entered on a switch that does not persist its config is lost at the
-> next reboot, and the config-reset fault below is confirmed rather than suspected.
-> Followed by: [`security-quick-wins.md`](security-quick-wins.md) items 1–5 (step 2).
-> Walkthrough: [`../../docs/omada-switch-hardening.md`](../../docs/omada-switch-hardening.md).
+> **This file is the source of truth.** `- [x]` done, `- [ ]` open. The command or GUI path sits
+> under the item. Do remaining `[ ]` items **in order**; do not skip an open item to work a later one.
+> Menu-path walkthrough (not the checklist): [`../../docs/omada-switch-hardening.md`](../../docs/omada-switch-hardening.md).
+> Prerequisites: Internal CA from [`../../docs/opnsense-cert-guide.md`](../../docs/opnsense-cert-guide.md)
+> — exists. Written 2026-09-05.
+> **Gates step 5.** Followed by: [`security-quick-wins.md`](security-quick-wins.md) items 1–5 (step 2).
 
 The two `SG2210XMP-M2` switches arrived, and the Site A unit is already carrying live traffic and powering
 `tec-pi-mgr` over PoE. That makes them the two newest admin surfaces on the network, and the least locked
@@ -20,8 +18,23 @@ This is the plan [`vlan-segmentation.md`](vlan-segmentation.md) assumed would ha
 Phase 0 step 3, before either switch went in the rack. Site A overtook that, so the work is split by what
 can be done on the flat network today (Phases 1–2) and what has to wait for VLANs to exist (Phase 3).
 
-Companion to [`security-quick-wins.md`](security-quick-wins.md), whose item 10 lists admin surfaces that
-live outside the repo. The switch UIs are two more of those, and this plan is where they get a home.
+Companion to [`security-quick-wins.md`](security-quick-wins.md), whose items 7–8 cover SSH and MFA on
+admin surfaces that live outside the repo. The switch UIs are two more of those, and this plan is where
+they get a home.
+
+## Remaining — do in this order
+
+Finish open `[ ]` items here before starting a later item in this plan. Phase 3 is blocked on VLANs.
+
+- [ ] **3.1** Management VLAN 50 for switch IPs when segmentation exists — so they are not on IoT.
+      Do **not** lock the UI to a single admin host (3.2 skipped). Blocked on
+      [`vlan-segmentation.md`](vlan-segmentation.md).
+
+SSH as `cursor` (password `CURSOR_SW_PWD`). Needs old algorithms:
+`KexAlgorithms=+diffie-hellman-group14-sha1,diffie-hellman-group1-sha1`,
+`HostKeyAlgorithms=+ssh-rsa`, `Ciphers=+aes128-cbc,3des-cbc,aes256-cbc`. Prompt `tec-sw-a>` then
+`enable`. Save: `copy running-config startup-config`. Copper `two-gigabitEthernet 1/0/N`; SFP+
+`ten-gigabitEthernet 1/0/9` and `1/0/10`.
 
 ## Decisions
 
@@ -44,11 +57,11 @@ live outside the repo. The switch UIs are two more of those, and this plan is wh
   TLS 1.2, and renewal is a hand operation on an 825-day clock with nothing in this repo to remind you.
   That is the price of a trusted name on the switch UI, and the expiry date therefore gets written down in
   `docs/network-layout.md` rather than living only in the certificate.
-- **Layer 2 filtering is staged, not switched on in one pass.** DHCP snooping is close to free and blocks
-  the attack the flat network is most open to. ARP Inspection and IP Source Guard build on it but break
-  statically addressed hosts, so they come later and separately. **802.1X is out of scope**: it needs a
-  RADIUS server that does not exist here, and stating that is better than leaving it as a permanent
-  someday item on a feature list.
+- **Home network, not a fortress.** Front door (WAN / Traefik) and obvious back doors (services sitting
+  on the LAN that should not be) get locked. Per-device switch paperwork — MAC limits, IP-MAC bindings,
+  ARP Inspection, Source Guard, Access Control down to one admin PC — does not. New phones and laptops
+  stay DHCP on the trusted SSID or a Clients port; no registration step. Reach your own systems from a
+  house laptop without VPN. WireGuard is the key for *away*, not for sitting in the living room.
 - **Neither switch routes.** Restated from [`vlan-segmentation.md`](vlan-segmentation.md) because it is a
   hardening decision as much as a topology one: traffic routed by a switch never reaches OPNsense, so no
   firewall policy applies to it. Static routing and inter-VLAN routing stay off on both.
@@ -66,9 +79,8 @@ live outside the repo. The switch UIs are two more of those, and this plan is wh
   switch-side static address.
 - **Site A is live and load-bearing.** It carries the LAN and powers `tec-pi-mgr` over PoE. The Pi
   initially failed to power on; the 160W budget was never the constraint — an AP plus a Pi 5 with an SSD is
-  roughly 40W — and it came up once PoE was enabled and prioritised on its port. Whether the port
-  negotiated **Class 4 (802.3at)** rather than Class 3 is still worth confirming, because Class 3 boots the
-  Pi and then browns it out under SSD load.
+  roughly 40W — and it came up once PoE was enabled and prioritised on its port. **Class 4 / high** on
+  Tw1/0/1 and Tw1/0/8 was GUI-verified 2026-09-06.
 - **Configuration resets on reboot, and the cause is confirmed.** First seen after a firmware update, but
   it also reproduces on a **plain reboot after entering static IP assignments**, with no firmware involved.
   That rules out the firmware-version-skip theory as the explanation and leaves the running config /
@@ -76,10 +88,9 @@ live outside the repo. The switch UIs are two more of those, and this plan is wh
   commits it to the startup config. Consequence for sequencing — **everything entered on either switch so
   far must be treated as unsaved** and re-entered, which is why this plan is step 1 rather than a
   follow-on.
-- **The UI is HTTPS with the factory self-signed certificate**, and the factory HTTPS settings are worse
-  than that alone suggests: Protocol Version defaults to **All**, which includes SSL 3.0, TLS 1.0 and
-  TLS 1.1, and the **RC4-MD5, RC4-SHA, DES-CBC-SHA and 3DES** cipher suites are all enabled by default.
-  Fixing that is one page and needs no certificate work.
+- **The UI was HTTPS with the factory self-signed certificate.** Protocol Version defaulted to **All**
+  (SSL 3.0, TLS 1.0, TLS 1.1) with RC4/DES/3DES on. Protocol, ciphers, and Internal CA certs are Phase 2
+  items 4 and 11 below.
 - **Both switches are now installed**, so `vlan-segmentation.md`'s Phase 0 bench window has closed for
   both — including its step 4 side-by-side test of the 10m inter-site AOC. Whatever was not verified on a
   bench now has to be verified in place.
@@ -103,18 +114,40 @@ running version is the one you installed before re-entering configuration you do
 
 Do this first, on both switches, before entering anything else worth keeping.
 
-1. **Save, reboot, verify.** Enter one harmless change, Save, reboot, and confirm it survived. This is a
-   deliberate test rather than an assumption, and it is the only way to know the switch is worth
-   configuring.
-2. **Confirm the running firmware image** and which image is set to boot next. If the upgrade landed on the
-   backup image, fix that before continuing.
-3. **Re-enter what was lost**: device name, and confirm the PoE port configuration for `tec-pi-mgr` and
-   AP 1 — enabled, 802.3at, high priority — then Save.
-4. **Confirm Perpetual PoE is enabled and saved.** This matters more than it looks: several steps below end
-   in a reboot, and a reboot without Perpetual PoE cuts power to `tec-pi-mgr` mid-plan.
-5. **Export a config backup off-switch**, per switch, with the firmware version in the filename. Repeat
-   after every change set from here on. This is also what makes either switch a cold spare for the other,
-   which [`vlan-segmentation.md`](vlan-segmentation.md) counts on.
+- [x] **1. Save, reboot, verify.** Enter one harmless change, Save, reboot, confirm it survived.
+  **Did (2026-09-06):** hostname + hardening saved, then reboot both. Config survived (~4 min uptime
+  after). `copy running-config startup-config` then `copy running-config backup-config` (`config2.cfg`).
+- [x] **2. Confirm running firmware and next-boot image.**
+  **Did:** both on `image2.bin`, 1.0.27 Build 20260804 Rel.4241; next-boot matches. Backup image is
+  factory `image1.bin` 1.0.0.
+- [x] **3. Device name and Site A PoE.** `tec-pi-mgr` and AP 1: enabled, 802.3at Class 4, high priority.
+  **Did:**
+  ```
+  hostname tec-sw-a          # tec-sw-b on Site B
+  interface two-gigabitEthernet 1/0/1
+   power inline supply enable
+   power inline priority high
+   power inline consumption class4
+   description tec-pi-mgr
+  interface two-gigabitEthernet 1/0/8
+   power inline supply enable
+   power inline priority high
+   power inline consumption class4
+   description ap-1
+  copy running-config startup-config
+  ```
+  GUI-verified Class 4 / high 2026-09-06. Dnsmasq Hosts renamed to `tec-sw-a` / `tec-sw-b`.
+- [x] **4. Perpetual PoE.** Needed so later reboots do not cut `tec-pi-mgr`.
+  **Did:** firmware **1.0.27 has no Perpetual PoE** (GUI or CLI). Do not confuse **SYSTEM → PoE → PoE
+  Auto Recovery** (ping-then-power-cycle PD) with perpetual power. Site A reboot **cuts PoE**. Shut the
+  Pi down cleanly first. Marked done as *confirmed absent*, not enabled.
+- [x] **5. Export config off-switch**, per switch, firmware in the filename. Repeat after every change
+  set. This is what makes either switch a cold spare for the other.
+  **Did (2026-09-06):** GUI **SYSTEM → System Tools → Config Backup** on both (browser download of
+  `data/sysConfigBackup.cfg`). On-switch `config2.cfg` is not an off-switch copy.
+  **No onboard scheduler.** Automation is [`appliance-config-backups.md`](appliance-config-backups.md)
+  Phase 1, not this plan. Until that runs: SSH `copy startup-config tftp …` or HTTPS GET
+  `data/sysConfigBackup.cfg?operation=write&unit_id=1` from a LAN host (not this NAT VM).
 
 ## Dependencies — there are almost none
 
@@ -124,8 +157,8 @@ Worth stating plainly, because the phase ordering above implies more coupling th
   about Traefik entrypoints and Cloudflare. The switch UIs are not behind Traefik and never should be.
 - [`security-quick-wins.md`](security-quick-wins.md) — **only Vaultwarden**, to hold the two passwords, and
   it is already running.
-- [`vlan-segmentation.md`](vlan-segmentation.md) — the only real dependency, and it gates **three items**
-  (Phase 3 steps 1, 2 and 7), not the job.
+- [`vlan-segmentation.md`](vlan-segmentation.md) — the only real dependency, and it gates Phase 3
+  items 1–3, not the rest of this job.
 - The certificate needs the Internal CA from
   [`../../docs/opnsense-cert-guide.md`](../../docs/opnsense-cert-guide.md). That CA exists and the OPNsense
   GUI already serves a certificate from it, so this is satisfied.
@@ -134,94 +167,125 @@ Everything in Phases 1 and 2 can be done today on the flat network.
 
 ## Phase 2 — baseline lockdown, HTTPS, and the traffic defences
 
-Safe on the flat network as it stands today. No VLAN dependency for anything here. Walkthrough:
-[`../../docs/omada-switch-hardening.md`](../../docs/omada-switch-hardening.md).
+Safe on the flat network as it stands today. No VLAN dependency. Applied 2026-09-06 over SSH as `cursor`
+except item 7.
 
-1. **Credentials.** Replace the default `admin`/`admin` with a distinct password per switch, stored in
-   Vaultwarden. Different passwords per switch is the part that buys something, since identical firmware
-   means one credential pattern otherwise reaches both sites.
-2. **Disable cloud access and controller enrolment.** Adoption is the risk, not the cloud service: it
-   pushes a default config over yours, and **the GUI and CLI are inaccessible entirely while a controller
-   manages the switch**. Recovery means forgetting the device on the controller, which resets it.
-3. **Management protocols.** HTTPS only, HTTP off. Telnet off — it is plaintext CLI on the device that
-   controls your layer 2. SSH only if you will use it, and then v2 only.
-4. **HTTPS protocol and cipher hardening.** Protocol Version to **TLS 1.2**, and disable the RC4 and
-   DES/3DES suites left on by default. One page, no dependencies, and arguably worth more than the
-   certificate.
-5. **DHCP Filter**, naming OPNsense as the only legal DHCPv4 server and the port it sits on. This works on
-   the flat network with no VLANs and no snooping trust-port design, and it closes rogue DHCP — the thing
-   this network is least able to resist today. Getting the interface wrong blocks legitimate DHCP
-   downstream, so test with one client before walking away.
-6. **DoS Defend on. Storm control, then loopback detection** — that order, because the vendor guidance is
-   to have storm control in place first. Not on the trunk or the inter-site link.
-7. **Port Security** MAC limits on ports serving devices that do not move, and **Port Isolation** at
-   Site B. Note the switch will not run 802.1X and Port Security together, which is free here because
-   802.1X is ruled out.
-8. **Admin-down unused ports, and disable PoE on any port not serving a chosen PD.**
-9. **SNMP off.** Revisit only alongside an `snmp_exporter` job, and then v3.
-10. **Confirm NTP.** DHCP option 42 already points at OPNsense per
-    [`../../docs/dmsaqdns.md`](../../docs/dmsaqdns.md); without working time, switch logs are not evidence
-    of anything.
-11. **Issue and install the certificate.** One server certificate per switch from the Internal CA:
+- [x] **1. Credentials.** Distinct `admin` password per switch in Vaultwarden. Automation account
+  `cursor` (Admin), password `CURSOR_SW_PWD` in `~/.profile`. Factory `admin`/`admin` already rejected.
+- [x] **2. Cloud access and controller enrolment off.** Standalone; never adopt. GUI/CLI vanish while a
+  controller manages the switch.
+  **Did:** already off on both; left off.
+- [x] **3. Management protocols.** HTTPS only, HTTP off, Telnet off, SSH v2 on for `cursor`.
+  **Did:**
+  ```
+  no ip http server
+  ip http secure-server
+  ```
+  Telnet/SNMP already off. Port 80 still serves an HTTPS redirect stub on this firmware.
+- [x] **4. HTTPS protocol and ciphers.** TLS 1.2 only; RC4/DES/3DES off.
+  **Did:**
+  ```
+  ip http secure-protocol tls12
+  ip http secure-ciphersuite ecdhe-a128-g-s256 ecdhe-a256-g-s384
+  ```
+  TLS 1.1 rejected (alert 70). Live ciphers `ECDHE-AES128-GCM-SHA256` / `ECDHE-AES256-GCM-SHA384`.
+- [x] **5. DHCP Filter.** Legal server OPNsense `192.168.1.1` on the port toward it. Test one client.
+  **Did:**
+  ```
+  ip dhcp filter
+  ip dhcp filter server permit-entry server-ip 192.168.1.1 client-mac all interface ten-gigabitEthernet 1/0/10
+  interface range two-gigabitEthernet 1/0/1-8
+   ip dhcp filter
+  ```
+  Te1/0/10 on both (Site A = OPNsense `ixl1`; Site B = inter-site toward OPNsense). Survived reboot.
+- [x] **6. DoS Defend, then storm control, then loopback detection.** Not on 10G / inter-site.
+  **Did:** one `ip dos-prevent type …` per type (cannot pack types). Storm control must set `rate-mode
+  kbps` first (`… kbps 1024` is invalid):
+  ```
+  ip dos-prevent
+  ip dos-prevent type land
+  ip dos-prevent type scan-synfin
+  ip dos-prevent type xma-scan
+  ip dos-prevent type null-scan
+  ip dos-prevent type port-less-1024
+  ip dos-prevent type blat
+  ip dos-prevent type ping-flood
+  ip dos-prevent type syn-flood
+  ip dos-prevent type win-nuke
+  ip dos-prevent type ping-of-death
+  ip dos-prevent type smurf
+  loopback-detection
+  interface range two-gigabitEthernet 1/0/1-8
+   loopback-detection
+   storm-control rate-mode kbps
+   storm-control broadcast 1024
+   storm-control multicast 1024
+  ```
+- [x] **7. Port Security MAC limits and Site B Port Isolation — skipped 2026-09-06.** These are
+  local L2 controls (extra MAC on a jack; two Site B desks talking to each other). They do **not**
+  reduce internet exposure. Unused ports are already admin-down (item 8). Revisit only if a live
+  jack in a public part of the house becomes a real concern, or as part of VLAN segmentation.
+- [x] **8. Admin-down unused ports; PoE only on chosen PDs.**
+  **Did Site A:** Tw1/0/2–6 `shutdown` + PoE off; Tw1/0/7 PoE off (wired client stays up); PoE on 1 and 8
+  only.
+  **Did Site B:** all copper PoE off; Tw1/0/1–4 and 7–8 `shutdown`; Tw1/0/5–6 stay up (desk).
+- [x] **9. SNMP off.** Revisit only with `snmp_exporter`, and then v3.
+  **Did:** already off; left off.
+- [x] **10. NTP.** DHCP option 42 → OPNsense.
+  **Did:** time correct on both.
+- [x] **11. Internal CA server cert per switch.** RSA 2048, SHA-256, SAN FQDN + short name, ≤825 days.
+  **Did (2026-09-06):**
+  1. OPNsense **System → Trust → Certificates** — server certs; first export had no SAN (discarded).
+     SAN `tec-sw-a.localdomain` + `tec-sw-a` (and Site B pair). notAfter **2027-10-08**. Subject has no
+     CN; browsers use SAN.
+  2. Exported PEM to `/media/sf_shared/switch/`. PKCS#12 is not a valid upload (two slots, not one bag).
+  3. OPNsense key is PKCS#8 (`BEGIN PRIVATE KEY`) — switch returns **Invalid SSL key**. Convert:
+     ```
+     openssl rsa -in tec-sw-a-cert_prv.pem -traditional -out tec-sw-a-cert_prv_pkcs1.pem
+     openssl rsa -in tec-sw-b-cert_prv.pem -traditional -out tec-sw-b-cert_prv_pkcs1.pem
+     ```
+     First line must be `BEGIN RSA PRIVATE KEY`.
+  4. GUI **SECURITY → Access Security → HTTPS Config** → Load Certificate then Load Key. Success both.
+  5. Firmware 1.0.27 presented the cert before reboot. Browser: `https://tec-sw-a` and `https://tec-sw-b`
+     load secured. Both switches rebooted; fingerprints unchanged. `tec-pi-mgr` pinged after Site A PoE cut.
+- [x] **12. Record fingerprint and expiry** here (source of truth) and in `docs/network-layout.md`.
 
-    | Field | Value |
-    |---|---|
-    | Common Name | `tec-sw-a.localdomain` / `tec-sw-b.localdomain` |
-    | SAN, DNS names | FQDN plus the short name |
-    | Key type | RSA 2048, SHA-256 — **not ECDSA**, the switch caps at TLS 1.2 |
-    | Lifetime | 825 days or less, as browsers require |
+  | | Site A `tec-sw-a` | Site B `tec-sw-b` |
+  |---|---|---|
+  | notAfter | 2027-10-08 03:17:26 GMT | 2027-10-08 03:18:22 GMT |
+  | SHA-256 | `B6:1F:CB:30:0D:0F:75:A1:C8:4A:66:24:82:35:0B:44:98:2B:95:4A:E8:60:DE:C2:27:43:D7:D7:C6:75:54:26` | `1F:B9:FD:08:F6:8E:67:C7:1B:12:73:16:50:AC:7E:5A:DC:F7:C9:D1:F6:97:64:25:44:21:E2:C2:46:46:82:AD` |
 
-    Export the certificate and its private key as PEM/BASE64 from `System → Trust → Certificates`, then
-    upload both in the **Load Certificate** and **Load Key** sections at the bottom of
-    `SECURITY → Access Security → HTTPS Config` — the same page as step 4, not a separate `SSL Config`
-    page, which is the older JetStream layout.
-
-    **The certificate does not take effect until the switch reboots, and Save must happen before that
-    reboot** or the upload goes with everything else. Site A's reboot drops PoE unless Phase 1 step 4 is
-    done.
-
-12. **Record the fingerprint and the expiry date** in `docs/network-layout.md`, alongside the reserved
-    address and the config-backup location for each switch.
+  Renewal is manual. Nothing in this repo will remind you.
 
 ## Phase 3 — the three items that wait for VLANs
 
-Only three things genuinely need the segments to exist. All belong in
-[`vlan-segmentation.md`](vlan-segmentation.md)'s phases rather than being done separately, and the first
-two happen on the physical console with the `igc1` rescue port already proven.
+Only three things genuinely need the segments to exist. They belong in
+[`vlan-segmentation.md`](vlan-segmentation.md)'s phases, and the first two happen on the physical console
+with the `igc1` rescue port already proven. Checkboxes live **here** so this plan stays the switch
+checklist; do not run them until that plan's console session.
 
-1. **Move management onto the Management VLAN interface** (VLAN 50) and remove the VLAN 1 interface. The
-   highest-value item here and the most likely to lock you out — it severs your own session by design.
-2. **Scope management access control** to the VPN range plus **one designated admin host**, the same
-   treatment the NAS IPMI gets. Note this is deliberately narrower than
-   [`vlan-segmentation.md`](vlan-segmentation.md)'s firewall policy, which permits Clients → Management on
-   443 and 22 so a laptop can reach the Pi fleet: pf opens the segment, and the switch's own access control
-   then narrows it to the single admin address. Two layers, and the switch is the fail-closed one. The
-   admin host needs a DHCP reservation for its address to be nameable. The page filters by IP, MAC, or
-   port, so it works today against individual addresses, but a typo here is a lockout.
-3. **IP-MAC binding, then ARP Detection, then IPv4 Source Guard** — last, separately, and only once the
-   binding table is populated from DHCP snooping or manual entries. Both of the latter two break
-   statically addressed hosts that have no binding entry, the NAS IPMI most obviously.
-
-Note what is *not* in this list: DHCP Filter, DoS Defend, storm control, loopback detection, port
-security, port isolation, and closing unused ports all moved up to Phase 2, because none of them need
-VLANs.
+- [ ] **1. Move management onto VLAN 50** and remove the VLAN 1 interface when segmentation exists, so
+  the switch UI is not on IoT/Guest. Console + `igc1` rescue first. **GUI:** SYSTEM → System Info →
+  System IP. House laptops on Clients should still reach it via pf (443/22), not via a one-host ACL.
+- [x] **2. Switch Access Control to one admin host — skipped.** That is a lockout waiting to happen
+  and a hoop to use your own laptop. pf policy in [`vlan-segmentation.md`](vlan-segmentation.md) is
+  enough: Clients and VPN may reach management UIs; IoT and Guest may not.
+- [x] **3. IP-MAC binding, ARP Detection, IPv4 Source Guard — skipped.** Every new DHCP client would
+  need a binding or go silent. Incompatible with "plug it in / join WiFi." DHCP Filter (Phase 2) stays.
 
 ## Knock-on repo changes
 
-- [`../../docs/omada-switch-hardening.md`](../../docs/omada-switch-hardening.md) — **written.** The
-  click-by-click walkthrough for all three phases, in the style of the other OPNsense guides in `docs/`.
-  This plan holds the decisions; that document holds the menu paths, the factory defaults worth changing,
-  and the troubleshooting.
+- [`../../docs/omada-switch-hardening.md`](../../docs/omada-switch-hardening.md) — **written.** Menu paths,
+  factory defaults, troubleshooting. **This plan is the checklist and the record of what ran.**
 - [`../../docs/opnsense-cert-guide.md`](../../docs/opnsense-cert-guide.md): note that the same Internal CA
   now signs the two switch UIs, and link the new guide.
-- [`security-quick-wins.md`](security-quick-wins.md) item 10: the switch UIs are two more admin surfaces
+- [`security-quick-wins.md`](security-quick-wins.md) items 7–8: the switch UIs are two more admin surfaces
   outside the repo, now with a plan of their own to point at.
 - [`vlan-segmentation.md`](vlan-segmentation.md): Phase 0 step 3 gains the save-and-verify test and a
   reference here; Phase 3 above folds into its phases; its Current state needs to say the Site A switch is
   live rather than bench-pending; and its "PoE swap for `tec-pi-mgr`" risk needs the Perpetual PoE point.
-- `docs/network-layout.md`, which [`vlan-segmentation.md`](vlan-segmentation.md) already plans to create,
-  becomes the record of per-switch management name, reserved address, certificate expiry, and where the
-  config backups live.
+- `docs/network-layout.md` is the inventory (name, MAC, port map). **Expiry and fingerprints are on
+  Phase 2 item 12 in this file**; copy them there when they change.
 
 Nothing here touches a compose file, a Gradle task, or Traefik. The switch configuration exists only in the
 switches and in their exported backups, which is exactly why the documentation is the deliverable.
@@ -231,9 +295,9 @@ switches and in their exported backups, which is exactly why the documentation i
 - **Unsaved configuration is lost silently.** No warning, no diff, and the loss only shows up at the next
   reboot — possibly weeks later, when a power event reboots the switch and takes the VLAN config with it.
   Phase 1's deliberate reboot test is the mitigation.
-- **A switch reboot drops PoE and therefore `tec-pi-mgr`.** The certificate install requires a reboot, and
-  so does any future firmware upgrade. Confirm Perpetual PoE is enabled *and saved*, or shut the Pi down
-  cleanly first rather than pulling power from under a running SSD.
+- **A switch reboot drops PoE and therefore `tec-pi-mgr`.** Firmware 1.0.27 has no Perpetual PoE. The
+  cert reboot on 2026-09-06 cut Site A as expected; the Pi came back. Any future firmware upgrade or cert
+  renewal does the same. Shut the Pi down cleanly first rather than pulling power from under a running SSD.
 - **Controller adoption overwrites standalone configuration.** A stray adoption — or someone trying the
   Omada app to be helpful — reverts the VLAN interface and strands a switch whose management address is not
   in the default VLAN. Cloud access off, and the reason recorded here.
@@ -254,26 +318,19 @@ switches and in their exported backups, which is exactly why the documentation i
 ## Verification
 
 ```bash
-# issuer must be the Internal CA, SAN must contain the FQDN, and notAfter must match
-# what is recorded in docs/network-layout.md
 for sw in tec-sw-a tec-sw-b; do
   openssl s_client -connect $sw.localdomain:443 -showcerts </dev/null 2>/dev/null \
-    | openssl x509 -noout -issuer -subject -dates -ext subjectAltName
+    | openssl x509 -noout -issuer -subject -dates -ext subjectAltName -fingerprint -sha256
 done
-
-# both reservations resolve, and no lease named SG2210XMP-M2 remains
 dig +short tec-sw-a.localdomain tec-sw-b.localdomain
 ```
 
-- Enter a change, Save, reboot: the change is still there. Do this per switch before trusting either.
-- Running firmware version matches what was installed, and the next-boot image is the same one.
-- `https://tec-sw-a.localdomain` and `https://tec-sw-b.localdomain` load with **no browser warning** from a
-  host that trusts the Internal CA.
-- HTTP and Telnet refuse connections on both switches; SNMP does not answer.
-- `tec-pi-mgr`'s port reports **Class 4** and stays up through an SSD-heavy load, and the Pi survives a
-  switch reboot with Perpetual PoE on.
-- After Phase 3: the switch UIs are unreachable from a Clients and an IoT host, reachable from the admin
-  host and the VPN; a second DHCP server plugged into an access port hands out nothing; neither switch has
-  static routing or inter-VLAN routing enabled.
-- A current config export exists off-switch for both, and restoring Site A's onto Site B produces a working
-  Site B with only the port map and management address to change.
+- [x] Save + reboot: hostname and hardening still there (both switches, 2026-09-06, twice including cert).
+- [x] Running firmware 1.0.27 `image2.bin`; next-boot matches.
+- [x] `https://tec-sw-a` and `https://tec-sw-b` load with no browser warning (Internal CA, 2026-09-06);
+      fingerprints still match after reboot.
+- [x] HTTP is a redirect stub; Telnet off; SNMP off; SSH v2 on.
+- [x] `tec-pi-mgr` Tw1/0/1 reports Class 4 / high; Pi returned after cert reboot (no Perpetual PoE).
+- [x] Off-switch config export exists for both (item 1.5, GUI 2026-09-06).
+- [ ] After Phase 3: UIs unreachable from Clients and IoT, reachable from admin host and VPN; rogue DHCP
+      on an access port hands out nothing; neither switch routes.

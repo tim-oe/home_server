@@ -3,10 +3,16 @@
 > **Status: implemented** — Phase 1–3 in `51865fe` (2026-08-25), rclone/gdrive follow-through in `70c7b45`
 > and `43a66fc` (2026-09-02). Verified 2026-09-05 against the repo: `traefik`, `diun`, `gotify`, `gdrive`
 > stacks present, nginx stack gone, `_common/rclone-sync.sh` in place.
-> **One task deliberately open:** the `src/services/mariadb` rclone sidecar and `deployMariadb` in
-> `deployAll`, deferred until that stack is in use. Owned by
-> [`weather-mariadb-migration.md`](weather-mariadb-migration.md) Phase 4, which ticks it here when done.
+> **This file is the source of truth.** `- [x]` done, `- [ ]` open. The leftover MariaDB item is owned
+> by [`weather-mariadb-migration.md`](weather-mariadb-migration.md) Phase 4; tick it here when that
+> plan ticks it.
 > Phase 5 follow-on: [`prometheus-monitoring-stack.md`](prometheus-monitoring-stack.md), implemented.
+> Written earlier. Checklist header 2026-09-06.
+
+## Remaining — do in this order
+
+- [ ] `src/services/mariadb` rclone sidecar and `deployMariadb` in `deployAll` — owned by
+      [`weather-mariadb-migration.md`](weather-mariadb-migration.md) Phase 4.
 
 Standardize the offsite backup tier into per-stack rclone sidecars triggered by the existing offen backup
 lifecycle, add DIUN + Gotify for notify-only update tracking with every image tag pinned in git, and replace

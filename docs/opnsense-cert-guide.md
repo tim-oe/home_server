@@ -6,8 +6,8 @@ Complete guide for creating and trusting self-signed certificates for OPNsense w
 > host per Parts 4–6, that host trusts every internal certificate issued from it, so the switch
 > certificates need no additional trust step. See
 > [`omada-switch-hardening.md`](omada-switch-hardening.md) Part 3 — the switches need **RSA 2048** keys and
-> an **825-day or shorter** lifetime, and their certificates must be exported as PEM together with the
-> private key.
+> an **825-day or shorter** lifetime. Export PEM cert + key, then convert the key to PKCS#1
+> (`openssl rsa -in … -traditional`) before Load Key; PKCS#8 and PKCS#12 are rejected.
 
 ## Table of Contents
 - [Prerequisites](#prerequisites)

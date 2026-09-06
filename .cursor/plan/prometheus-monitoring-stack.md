@@ -4,10 +4,16 @@
 > `node-exporter`, `cadvisor` in `src/services/prometheus`, three scrape jobs (`node`, `cadvisor`,
 > `traefik`), Grafana provisioning for datasource, contact point, policies, rules, and three dashboards;
 > InfluxDB gone from the grafana stack.
-> **Two follow-ons not started:** [`ups-monitoring.md`](ups-monitoring.md) and
-> [`unifi-os-monitoring.md`](unifi-os-monitoring.md). The `b212641` commit message says it "added new
-> services for UPS and UniFi monitoring"; it added those two plan files only. No `nut_exporter` or
-> `unpoller` exists in the compose file and no `nut` or `unpoller` job in `prometheus.yml`.
+> **This file is the source of truth.** `- [x]` done, `- [ ]` open. Follow-ons live in their own plans;
+> tick them there, then tick the matching items below.
+> Written earlier. Checklist header 2026-09-06.
+
+## Remaining — do in this order
+
+Nothing left in this file. Follow-ons:
+
+- [ ] [`ups-monitoring.md`](ups-monitoring.md) — `nut_exporter` for the two `upsd` instances.
+- [ ] [`unifi-os-monitoring.md`](unifi-os-monitoring.md) — `unpoller` for UniFi OS Server.
 
 Replace the never-initialized InfluxDB with Prometheus + node_exporter + cAdvisor feeding the existing Grafana,
 with dashboards and resource-spike alert rules provisioned from git and routed to Gotify.

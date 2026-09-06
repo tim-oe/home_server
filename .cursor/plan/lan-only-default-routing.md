@@ -1,11 +1,13 @@
 # LAN-Only Default Routing
 
 > **Implementation order: step 3 of 5.**
-> Status: reviewed 2026-09-05, ready to implement.
-> Prerequisites: [`security-quick-wins.md`](security-quick-wins.md) items 2 (deprecated `unifi` stack
-> deleted, port 8443 free) and 4 (wiki `6875:80` removed). Step 0 below checks the first; the second is
+> **This file is the source of truth.** `- [x]` done, `- [ ]` open. The command or GUI path sits
+> under the item. Do remaining `[ ]` items **in order**; do not skip an open item to work a later one.
+> Prerequisites: [`security-quick-wins.md`](security-quick-wins.md) items **2** (deprecated `unifi`
+> stack gone, 8443 free) and **5** (wiki `6875:80` removed). Step 1 below checks the first; item 5 is
 > what makes `APP_PROXIES: "*"` safe.
 > Followed by: `security-quick-wins.md` items 6–11, then [`vlan-segmentation.md`](vlan-segmentation.md).
+> Written 2026-09-05. Checklist header 2026-09-06.
 
 Invert the exposure model. Today 14 of 17 Traefik routes are open to the internet and only three carry
 `lan-only@file`. Make LAN-only the default by splitting internet traffic onto its own entrypoint that
@@ -15,6 +17,22 @@ only the proxied `weather` and `wiki` names reach the host at all.
 Builds on [`container-management-overhaul.md`](container-management-overhaul.md) Phase 3, which replaced
 nginx with Traefik. Assumes the current Traefik v3.7 stack, the `share-net` external network, and the
 Cloudflare DNS-01 wildcard cert are all in place.
+
+## Remaining — do in this order
+
+Each phase fails closed. Do not tighten the firewall source before wiki/weather are proxied.
+
+- [ ] **1** Repo edits, deploy Traefik and wiki. Steps 1–4 are one sitting (wiki/weather dark from WAN).
+- [ ] **2** Verify all 17 still work on `:443` from the LAN.
+- [ ] **3** WireGuard client `DNS = 10.9.0.1`; confirm a private service over cellular **before** pf.
+- [ ] **4** OPNsense forward to `192.168.1.35:8443`; delete duplicate 443 rule.
+- [ ] **5** Verify from outside.
+- [ ] **6** `src/bin/cloudflare-dns.sh` — proxy wiki/weather, pin `vpn` DNS-only, Full (strict).
+- [ ] **7** Cloudflare-ranges alias on the port-forward; rate-limit rule.
+- [ ] **8** Authenticated Origin Pulls (Cloudflare first, then Traefik `tls.yml`).
+- [ ] **9** DNSSEC at Cloudflare + DS at registrar — only after 1–8 work.
+
+Detail, commands, and verification are in **Order of operations** and **Verification** below.
 
 ## Decisions
 
@@ -614,31 +632,33 @@ come with the free plan:
 
 ## Order of operations
 
-Each phase fails closed, so a stall between phases costs availability on wiki and weather, never
-exposure. Do not tighten the firewall source before the two records are proxied, or those two go dark.
+Tick the matching item in **Remaining** above as well. Each phase fails closed, so a stall between phases
+costs availability on wiki and weather, never exposure. Do not tighten the firewall source before the two
+records are proxied, or those two go dark.
 
-1. Repo edits, deploy Traefik and wiki. At this point everything is cut off from the internet, because
-   `lan-only@file` on `websecure` rejects WAN traffic still arriving on `:443`. Steps 1 through 4 are
-   one sitting, not separate evenings: wiki and weather are dark from the internet for the whole gap, so
-   have the OPNsense tab open before running the deploy.
-2. Verify from the LAN that all 17 still work on `:443`.
-3. Update the WireGuard client config to `DNS = 10.9.0.1` and confirm from cellular that a private
-   service is reachable over the tunnel. Do this **before** touching the firewall: after step 4 the VPN
-   is the only remote route to 15 of the 17 services, so it needs to be known-good first.
-4. Flip the OPNsense forward to `192.168.1.35:8443` and delete the duplicate 443 rule. wiki and weather
-   are public again; the other 15 now 404 from outside.
-5. Verify from outside.
-6. Run `src/bin/cloudflare-dns.sh`: proxies `wiki` and `weather`, pins `vpn` to DNS-only, sets
-   Full (strict). Verify from outside again, and re-check that the tunnel still establishes.
-7. Create the alias and set the port-forward source to it. Verify from outside a third time. Add the
-   rate-limit rule while in the dashboard.
-8. Authenticated Origin Pulls: enable at Cloudflare, confirm wiki still loads, then add `tls.yml` and the
-   `options` line to `traefik.yml`, redeploy and restart Traefik, and confirm wiki still loads. The
-   direct-to-origin `curl --resolve` probe from Verification should now fail with a TLS handshake error
-   even if the firewall alias were ever removed.
-9. Only once all of the above is confirmed working: enable DNSSEC at Cloudflare and add the DS record at
-   the registrar. Verify `dig +dnssec tecronin.uk` sets `ad`, that both public names still load, and that
-   the tunnel still establishes.
+- [ ] **1** Repo edits, deploy Traefik and wiki. At this point everything is cut off from the internet,
+      because `lan-only@file` on `websecure` rejects WAN traffic still arriving on `:443`. Steps 1
+      through 4 are one sitting, not separate evenings: wiki and weather are dark from the internet for
+      the whole gap, so have the OPNsense tab open before running the deploy.
+- [ ] **2** Verify from the LAN that all 17 still work on `:443`.
+- [ ] **3** Update the WireGuard client config to `DNS = 10.9.0.1` and confirm from cellular that a
+      private service is reachable over the tunnel. Do this **before** touching the firewall: after
+      step 4 the VPN is the only remote route to 15 of the 17 services, so it needs to be known-good
+      first.
+- [ ] **4** Flip the OPNsense forward to `192.168.1.35:8443` and delete the duplicate 443 rule. wiki
+      and weather are public again; the other 15 now 404 from outside.
+- [ ] **5** Verify from outside.
+- [ ] **6** Run `src/bin/cloudflare-dns.sh`: proxies `wiki` and `weather`, pins `vpn` to DNS-only, sets
+      Full (strict). Verify from outside again, and re-check that the tunnel still establishes.
+- [ ] **7** Create the alias and set the port-forward source to it. Verify from outside a third time.
+      Add the rate-limit rule while in the dashboard.
+- [ ] **8** Authenticated Origin Pulls: enable at Cloudflare, confirm wiki still loads, then add
+      `tls.yml` and the `options` line to `traefik.yml`, redeploy and restart Traefik, and confirm wiki
+      still loads. The direct-to-origin `curl --resolve` probe from Verification should now fail with a
+      TLS handshake error even if the firewall alias were ever removed.
+- [ ] **9** Only once all of the above is confirmed working: enable DNSSEC at Cloudflare and add the DS
+      record at the registrar. Verify `dig +dnssec tecronin.uk` sets `ad`, that both public names still
+      load, and that the tunnel still establishes.
 
 ## Verification
 
@@ -735,6 +755,6 @@ Fifteen services also publish host ports directly on 192.168.1.35, bypassing Tra
 grafana 3000, jenkins 8088 and 50000, nexus 8081 and 8082, sonarqube 9000 and its postgres 5432, portainer
 8050, mq 5672/15672/1883, openhab 8881, obsidian 8954, ups 8010 and 8020, velxio 3080, vaultwarden 8860,
 wiki 6875, unifi-os 11443/8080/8882, plus the standalone mariadb 3306, redis 6379, and timescaledb 5432.
-None are covered by Traefik middleware. [`security-quick-wins.md`](security-quick-wins.md) item 5 binds
+None are covered by Traefik middleware. [`security-quick-wins.md`](security-quick-wins.md) item **6** binds
 them to loopback, with a named list of exceptions (1883, 8080/3478, 3306, possibly 8082) that stay on the
 LAN address because another host consumes them.

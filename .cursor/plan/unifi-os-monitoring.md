@@ -1,15 +1,34 @@
 # UniFi OS Monitoring
 
-> **Status: not started.** Verified 2026-09-05: no `unpoller` service in
+> **Independent of the 5-step switch → quick-wins → routing → VLAN sequence.**
+> **This file is the source of truth.** `- [x]` done, `- [ ]` open. The command or GUI path sits
+> under the item. Do remaining `[ ]` items **in order**; do not skip an open item to work a later one.
+> Status: not started. Verified 2026-09-05: no `unpoller` service in
 > `src/services/prometheus/docker-compose.yml`, no `unpoller` job in `prometheus.yml`, no UniFi rules or
 > dashboards under `grafana/`. The parent plan's commit `b212641` added this file, not the implementation.
-> All eight tasks open. Prerequisites ([`prometheus-monitoring-stack.md`](prometheus-monitoring-stack.md),
+> Prerequisites ([`prometheus-monitoring-stack.md`](prometheus-monitoring-stack.md),
 > [`unifi-os-server-migration.md`](unifi-os-server-migration.md)) are both complete.
+> Written earlier. Checklist header 2026-09-06.
 
 Follow-on to [`prometheus-monitoring-stack.md`](prometheus-monitoring-stack.md). Assumes UniFi OS Server is
 the live controller ([`unifi-os-server-migration.md`](unifi-os-server-migration.md)), not the EOL
 `jacobalberty/unifi` stack. Prometheus and Grafana unified alerting already exist; this adds AP, switch, and
 client metrics via unpoller.
+
+## Remaining — do in this order
+
+- [ ] **1** Create the local Limited Admin / Network View Only user on UniFi OS Server.
+- [ ] **2** Pin unpoller v5.2.2 (or current tag) in the prometheus compose file, unpublished, Influx
+      disabled, `https://unifi.localdomain`, `VERIFY_SSL=false`.
+- [ ] **3** Put credentials in `/mnt/raid/services/prometheus/.env` on the host.
+- [ ] **4** Add `job_name: unpoller` targeting `unpoller:9130`.
+- [ ] **5** Provision device-offline (15m) and unpoller-down (5m) rules to the existing Gotify contact
+      point.
+- [ ] **6** Commit Sites / USW / UAP / Clients dashboard JSON with datasource uid rewrite; skip USG and
+      DPI.
+- [ ] **7** Update prometheus README, unifi-os README, and `docs/service_configuration.md`.
+- [ ] **8** Deploy (`./gradlew deployPrometheus` then `docker compose up -d`) and confirm `unpoller` UP
+      at `https://prometheus.tecronin.uk/targets`.
 
 Gateway metrics are **not** the goal. WAN/firewall is OPNsense on fort-apache (already on node_exporter). Skip
 the USG dashboard.
@@ -144,15 +163,4 @@ existing file provider already loads that directory.
   unpoller and the read-only local user.
 - [`docs/service_configuration.md`](../../docs/service_configuration.md): one line under Prometheus.
 
-## Task list
-
-- [ ] Create the local Limited Admin / Network View Only user on UniFi OS Server.
-- [ ] Pin unpoller v5.2.2 (or current tag) in the prometheus compose file, unpublished, Influx disabled,
-      `https://unifi.localdomain`, `VERIFY_SSL=false`.
-- [ ] Put credentials in `/mnt/raid/services/prometheus/.env` on the host.
-- [ ] Add `job_name: unpoller` targeting `unpoller:9130`.
-- [ ] Provision device-offline (15m) and unpoller-down (5m) rules to the existing Gotify contact point.
-- [ ] Commit Sites / USW / UAP / Clients dashboard JSON with datasource uid rewrite; skip USG and DPI.
-- [ ] Update prometheus README, unifi-os README, and `docs/service_configuration.md`.
-- [ ] Deploy (`./gradlew deployPrometheus` then `docker compose up -d`) and confirm `unpoller` UP at
-      `https://prometheus.tecronin.uk/targets`.
+Tick **Remaining** at the top. Detail for each item is in the sections above.
