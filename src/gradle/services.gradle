@@ -170,6 +170,21 @@ tasks.register('deployGotify', GradleBuild) {
     }
 }
 
+tasks.register('deployForgejo', GradleBuild) {
+    description = 'deploy forgejo scripts and create backup dir'
+    group = "deploy stuff"
+    buildName = 'forgejo'
+    startParameter.projectProperties = ['svc':'forgejo']
+    tasks = ['deployService']
+    doFirst {
+        ssh.run {
+            session(remotes.desktop) {
+                executeSudo 'mkdir -p /mnt/backup/docker/forgejo'
+            }
+        }
+    }
+}
+
 tasks.register('deployDiun', GradleBuild) {
     description = 'deploy diun image-watch stack'
     group = "deploy stuff"
@@ -232,6 +247,7 @@ tasks.register('deployAll') {
         'deployTimescaledb',
         'deployGdrive',
         'deployGotify',
+        'deployForgejo',
         'deployDiun',
         'deployTraefik',
         'deployPrometheus'

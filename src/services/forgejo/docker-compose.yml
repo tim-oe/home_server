@@ -1,0 +1,107 @@
+# https://forgejo.org/docs/latest/admin/installation/docker/
+# https://codeberg.org/forgejo/forgejo
+---
+services:
+  forgejo:
+    image: codeberg.org/forgejo/forgejo:16.0.5
+    container_name: forgejo
+    hostname: forgejo
+    restart: unless-stopped
+    ports:
+      # LAN IP only. A bare 2222:22 is reachable on every host interface because
+      # Docker inserts its rules ahead of ufw. WireGuard still reaches this
+      # address through OPNsense. The web port stays unpublished; Traefik
+      # reaches :3000 over share-net.
+      - "192.168.1.35:2222:22"
+    volumes:
+      - forgejo-data:/data
+      - /etc/timezone:/etc/timezone:ro
+      - /etc/localtime:/etc/localtime:ro
+    environment:
+      - USER_UID=1000
+      - USER_GID=1000
+      - FORGEJO__database__DB_TYPE=sqlite3
+      - FORGEJO__server__DOMAIN=git.tecronin.uk
+      - FORGEJO__server__ROOT_URL=https://git.tecronin.uk/
+      - FORGEJO__server__HTTP_PORT=3000
+      # Do not set the plain SSH_PORT env var. The image's s6/openssh/setup
+      # reads SSH_PORT/SSH_LISTEN_PORT (default 22) for the sshd listen port;
+      # the FORGEJO__ form only sets the advertised port in app.ini. Plain
+      # SSH_PORT=2222 would move sshd inside the container and break the
+      # 2222:22 mapping. No SSH_LISTEN_PORT: OpenSSH handles SSH in the
+      # standard image, not Forgejo's built-in server.
+      - FORGEJO__server__SSH_DOMAIN=git.tecronin.uk
+      - FORGEJO__server__SSH_PORT=2222
+      - FORGEJO__service__DISABLE_REGISTRATION=true
+      - FORGEJO__service__REQUIRE_SIGNIN_VIEW=true
+      - FORGEJO__security__INSTALL_LOCK=true
+      - FORGEJO__actions__ENABLED=false
+      # Optional. Same SMTP_* names as vaultwarden; leave them unset to skip mail.
+      - FORGEJO__mailer__ENABLED=${FORGEJO_MAILER_ENABLED:-false}
+      - FORGEJO__mailer__PROTOCOL=${FORGEJO_MAILER_PROTOCOL:-smtp+starttls}
+      - FORGEJO__mailer__SMTP_ADDR=${SMTP_HOST:-}
+      - FORGEJO__mailer__SMTP_PORT=${SMTP_PORT:-}
+      - FORGEJO__mailer__FROM=${SMTP_FROM:-}
+      - FORGEJO__mailer__USER=${SMTP_USERNAME:-}
+      - FORGEJO__mailer__PASSWD=${SMTP_PASSWORD:-}
+    labels:
+      - docker-volume-backup.stop-during-backup=true
+      - traefik.enable=true
+      - traefik.http.routers.forgejo.rule=Host(`git.tecronin.uk`)
+      - traefik.http.routers.forgejo.entrypoints=websecure
+      - traefik.http.middlewares.forgejo-lan.ipallowlist.sourcerange=192.168.1.0/24,10.9.0.0/24
+      - traefik.http.routers.forgejo.middlewares=forgejo-lan
+      - traefik.http.services.forgejo.loadbalancer.server.port=3000
+  backup:
+    # https://github.com/offen/docker-volume-backup/
+    image: offen/docker-volume-backup:v2.48.2
+    container_name: forgejo-backup
+    restart: always
+    environment:
+      EXEC_LABEL: forgejo
+      BACKUP_CRON_EXPRESSION: "15 02 * * *"
+      BACKUP_FILENAME: backup-%Y-%m-%dT%H-%M-%S.tar.gz
+      BACKUP_PRUNING_PREFIX: backup-
+      BACKUP_RETENTION_DAYS: 7
+      # Symmetric AES256. etckeeper history holds /etc/shadow and private keys
+      # in plaintext; this is the one stack that encrypts the archive.
+      GPG_PASSPHRASE: ${BACKUP_GPG_PASSPHRASE}
+    volumes:
+      - /etc/timezone:/etc/timezone:ro
+      - /etc/localtime:/etc/localtime:ro
+      - forgejo-data:/backup:ro
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - /mnt/backup/docker/forgejo:/archive
+    labels:
+      - diun.enable=false
+  gdrive:
+    image: rclone/rclone:1.75.0
+    container_name: forgejo-gdrive
+    restart: unless-stopped
+    # alpine busybox sleep has no infinity; idle until offen execs prune-post
+    entrypoint: ["tail", "-f", "/dev/null"]
+    env_file:
+      - path: /etc/environment
+        required: false
+    environment:
+      PATH: /usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+      RCLONE_SRC: /archive
+      RCLONE_DEST: gdrive:/backup/services/forgejo
+      GOTIFY_URL: http://gotify
+    volumes:
+      - /etc/timezone:/etc/timezone:ro
+      - /etc/localtime:/etc/localtime:ro
+      - /root/.config/rclone/rclone.conf:/config/rclone/rclone.conf:ro
+      - /mnt/backup/docker/forgejo:/archive:ro
+      - ./_common/rclone-sync.sh:/rclone-sync.sh:ro
+    labels:
+      - docker-volume-backup.exec-label=forgejo
+      - docker-volume-backup.prune-post=/bin/sh /rclone-sync.sh
+      - diun.enable=false
+volumes:
+  forgejo-data:
+    name: forgejo-data
+networks:
+  default:
+    external: true
+    name: share-net
