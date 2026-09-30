@@ -39,8 +39,8 @@ services:
       - globalSettings__send__baseDirectory=/data/attachments/send
       - globalSettings__send__baseUrl=https://vaultwarden.tecronin.uk/attachments/send
     labels:
-      # for offen backup
-      - docker-volume-backup.stop-during-backup=true
+      # for offen backup; value must be unique per stack
+      - docker-volume-backup.stop-during-backup=vaultwarden.stop
       - traefik.enable=true
       - traefik.http.routers.vaultwarden.rule=Host(`vaultwarden.tecronin.uk`)
       - traefik.http.routers.vaultwarden.entrypoints=websecure
@@ -55,6 +55,7 @@ services:
     restart: always
     environment:
       EXEC_LABEL: vaultwarden
+      BACKUP_STOP_DURING_BACKUP_LABEL: vaultwarden.stop
       BACKUP_CRON_EXPRESSION: "5 01 * * *"
       BACKUP_FILENAME: backup-%Y-%m-%dT%H-%M-%S.tar.gz
       BACKUP_PRUNING_PREFIX: backup-

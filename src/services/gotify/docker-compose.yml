@@ -16,7 +16,7 @@ services:
       - /etc/timezone:/etc/timezone:ro
       - /etc/localtime:/etc/localtime:ro
     labels:
-      - docker-volume-backup.stop-during-backup=true
+      - docker-volume-backup.stop-during-backup=gotify.stop
       - traefik.enable=true
       - traefik.http.routers.gotify.rule=Host(`gotify.tecronin.uk`)
       - traefik.http.routers.gotify.entrypoints=websecure
@@ -28,6 +28,7 @@ services:
     restart: always
     environment:
       EXEC_LABEL: gotify
+      BACKUP_STOP_DURING_BACKUP_LABEL: gotify.stop
       BACKUP_CRON_EXPRESSION: "45 01 * * *"
       BACKUP_FILENAME: backup-%Y-%m-%dT%H-%M-%S.tar.gz
       BACKUP_PRUNING_PREFIX: backup-

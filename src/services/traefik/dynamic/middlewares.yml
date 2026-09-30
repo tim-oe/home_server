@@ -1,6 +1,7 @@
-# Kept for a future entrypoint-level allowlist. Do not point docker routers at
-# lan-only@file: Traefik drops the route if the file provider has not loaded yet.
-# Live LAN-only services define the same CIDRs as labels on the app container.
+# Applied at the websecure entrypoint (traefik.yml). Do not also point docker
+# routers at lan-only@file: Traefik drops the route if the file provider has not
+# loaded yet. vaultwarden, prometheus, unifi-os, and forgejo keep the same CIDRs as
+# labels on the app container (must-never-be-public marker).
 http:
   middlewares:
     lan-only:

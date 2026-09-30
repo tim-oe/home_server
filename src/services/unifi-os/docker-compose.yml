@@ -68,7 +68,7 @@ services:
           - unifi.localdomain
     labels:
       # for offen backup, mongodb cannot be safely hot copied
-      - docker-volume-backup.stop-during-backup=true
+      - docker-volume-backup.stop-during-backup=unifi-os.stop
       - traefik.enable=true
       - traefik.http.routers.unifi-os.rule=Host(`unifi.tecronin.uk`)
       - traefik.http.routers.unifi-os.entrypoints=websecure
@@ -96,6 +96,7 @@ services:
     restart: always
     environment:
       EXEC_LABEL: unifi-os
+      BACKUP_STOP_DURING_BACKUP_LABEL: unifi-os.stop
       BACKUP_CRON_EXPRESSION: "15 01 * * *"
       BACKUP_FILENAME: backup-%Y-%m-%dT%H-%M-%S.tar.gz
       BACKUP_PRUNING_PREFIX: backup-

@@ -10,6 +10,7 @@ services:
     ports:
       - "80:80"
       - "443:443"
+      - "8443:8443"
     environment:
       CF_DNS_API_TOKEN: ${CF_DNS_API_TOKEN}
     volumes:
@@ -27,7 +28,7 @@ services:
     dns:
       - 192.168.1.1
     labels:
-      - docker-volume-backup.stop-during-backup=true
+      - docker-volume-backup.stop-during-backup=traefik.stop
     healthcheck:
       test: ["CMD", "traefik", "healthcheck", "--ping"]
       interval: 30s
@@ -40,6 +41,7 @@ services:
     restart: always
     environment:
       EXEC_LABEL: traefik
+      BACKUP_STOP_DURING_BACKUP_LABEL: traefik.stop
       BACKUP_CRON_EXPRESSION: "50 01 * * *"
       BACKUP_FILENAME: backup-%Y-%m-%dT%H-%M-%S.tar.gz
       BACKUP_PRUNING_PREFIX: backup-

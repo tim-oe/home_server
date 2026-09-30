@@ -45,7 +45,7 @@ services:
       - FORGEJO__mailer__USER=${SMTP_USERNAME:-}
       - FORGEJO__mailer__PASSWD=${SMTP_PASSWORD:-}
     labels:
-      - docker-volume-backup.stop-during-backup=true
+      - docker-volume-backup.stop-during-backup=forgejo.stop
       - traefik.enable=true
       - traefik.http.routers.forgejo.rule=Host(`git.tecronin.uk`)
       - traefik.http.routers.forgejo.entrypoints=websecure
@@ -59,6 +59,7 @@ services:
     restart: always
     environment:
       EXEC_LABEL: forgejo
+      BACKUP_STOP_DURING_BACKUP_LABEL: forgejo.stop
       BACKUP_CRON_EXPRESSION: "15 02 * * *"
       BACKUP_FILENAME: backup-%Y-%m-%dT%H-%M-%S.tar.gz
       BACKUP_PRUNING_PREFIX: backup-

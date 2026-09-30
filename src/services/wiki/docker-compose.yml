@@ -20,7 +20,7 @@ services:
     volumes:
       - mariadb_data:/config
     labels:
-      - docker-volume-backup.stop-during-backup=true
+      - docker-volume-backup.stop-during-backup=wiki.stop
     healthcheck:
       test: ["CMD-SHELL", "mysqladmin ping -h localhost -u bookstack -p\"$$MYSQL_PASSWORD\""]
       interval: 10s
@@ -41,6 +41,7 @@ services:
       TZ: America/Chicago                        # <-- set your timezone
       APP_URL: https://wiki.tecronin.uk
       APP_KEY: ${BOOKSTACK_APP_KEY}
+      APP_PROXIES: "*"
       DB_HOST: mariadb
       DB_PORT: 3306
       DB_USERNAME: bookstack
@@ -61,10 +62,10 @@ services:
       - bookstack_config:/config
       - ./custom-php.ini:/etc/php85/conf.d/custom.ini
     labels:
-      - docker-volume-backup.stop-during-backup=true
+      - docker-volume-backup.stop-during-backup=wiki.stop
       - traefik.enable=true
       - traefik.http.routers.wiki.rule=Host(`wiki.tecronin.uk`)
-      - traefik.http.routers.wiki.entrypoints=websecure
+      - traefik.http.routers.wiki.entrypoints=websecure,public
       - traefik.http.services.wiki.loadbalancer.server.port=80
 
   # ─── Volume Backup ───────────────────────────────────────────────────────────
@@ -74,6 +75,7 @@ services:
     restart: unless-stopped
     environment:
       EXEC_LABEL: wiki
+      BACKUP_STOP_DURING_BACKUP_LABEL: wiki.stop
       BACKUP_CRON_EXPRESSION: "0 2 * * *"
       BACKUP_FILENAME: "bookstack-backup-%Y-%m-%dT%H-%M-%S.tar.gz"
       BACKUP_PRUNING_PREFIX: bookstack-backup-

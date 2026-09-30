@@ -1,8 +1,17 @@
-# Static config. TLS for every router is set on the websecure entrypoint, so
-# service labels do not need certResolver or tls=true.
+# Static config. TLS for every router is set on the websecure and public
+# entrypoints, so service labels do not need certResolver or tls=true.
 # https://doc.traefik.io/traefik/v3.7/
 log:
   level: INFO
+
+accessLog:
+  format: json
+  fields:
+    headers:
+      defaultMode: drop
+      names:
+        User-Agent: keep
+        CF-Connecting-IP: keep
 
 global:
   checkNewVersion: false
@@ -35,6 +44,39 @@ entryPoints:
           scheme: https
   websecure:
     address: ":443"
+    http:
+      aliasHeadersStrategy: delete
+      middlewares:
+        - lan-only@file
+      tls:
+        certResolver: cloudflare
+        domains:
+          - main: tecronin.uk
+            sans:
+              - "*.tecronin.uk"
+  # Internet-facing. OPNsense forwards WAN:443 here. Routers must opt in with
+  # entrypoints=websecure,public, so a new service is not public by accident.
+  public:
+    address: ":8443"
+    # https://www.cloudflare.com/ips-v4 — the same list the OPNsense alias fetches.
+    # Static here because Traefik cannot load it from a URL; it changes rarely.
+    forwardedHeaders:
+      trustedIPs:
+        - 173.245.48.0/20
+        - 103.21.244.0/22
+        - 103.22.200.0/22
+        - 103.31.4.0/22
+        - 141.101.64.0/18
+        - 108.162.192.0/18
+        - 190.93.240.0/20
+        - 188.114.96.0/20
+        - 197.234.240.0/22
+        - 198.41.128.0/17
+        - 162.158.0.0/15
+        - 104.16.0.0/13
+        - 104.24.0.0/14
+        - 172.64.0.0/13
+        - 131.0.72.0/22
     http:
       aliasHeadersStrategy: delete
       tls:

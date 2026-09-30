@@ -33,9 +33,9 @@ services:
       # contactpoints.yml interpolates this at provision time
       - GOTIFY_TOKEN=${GOTIFY_TOKEN}
     labels:
-      # Unique value so wiki/gotify/traefik backups do not docker-stop this container.
-      # Offen matches this against BACKUP_STOP_CONTAINER_LABEL on the sidecar.
-      - docker-volume-backup.stop-during-backup=grafana
+      # Unique value so other stacks' backups do not docker-stop this container.
+      # Offen matches this against BACKUP_STOP_DURING_BACKUP_LABEL on the sidecar.
+      - docker-volume-backup.stop-during-backup=grafana.stop
       - traefik.enable=true
       - traefik.http.routers.grafana.rule=Host(`grafana.tecronin.uk`)
       - traefik.http.routers.grafana.entrypoints=websecure
@@ -47,7 +47,7 @@ services:
     restart: always
     environment:
       EXEC_LABEL: grafana
-      BACKUP_STOP_CONTAINER_LABEL: grafana
+      BACKUP_STOP_DURING_BACKUP_LABEL: grafana.stop
       BACKUP_CRON_EXPRESSION: "35 01 * * *"
       BACKUP_FILENAME: backup-%Y-%m-%dT%H-%M-%S.tar.gz
       BACKUP_PRUNING_PREFIX: backup-
