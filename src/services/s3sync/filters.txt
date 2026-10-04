@@ -1,5 +1,6 @@
-# VirtualBox noise and partial files; VM disks and snapshots are kept.
-- **/Logs/**
-- *.lck
-- *.tmp
-- *.part
+# VirtualBox noise and partial files. One restic exclude pattern per line.
+# A pattern with no slash matches the file name in any directory.
+**/Logs/**
+*.lck
+*.tmp
+*.part

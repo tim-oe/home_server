@@ -1,9 +1,9 @@
-# Push /mnt/backup/work to the EST_BACKUP_* S3 bucket on a schedule.
+# Restic backup of /mnt/backup/work to the EST_BACKUP_* S3 bucket on a schedule.
 # Credentials and paths come from host /etc/environment (env_file below).
 ---
 services:
   s3sync:
-    image: rclone/rclone:1.75.0
+    image: restic/restic:0.19.1
     container_name: s3sync
     hostname: s3sync
     restart: unless-stopped
@@ -15,11 +15,11 @@ services:
       PATH: /usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
       GOTIFY_URL: http://gotify
       QUIET_MINUTES: "30"
-      MAX_DELETE: "50"
+      RESTIC_CACHE_DIR: /cache
     volumes:
       - /etc/timezone:/etc/timezone:ro
       - /etc/localtime:/etc/localtime:ro
-      # crond does not pass Docker env into jobs; s3-push.sh reads EST_BACKUP_* here.
+      # crond does not pass Docker env into jobs; s3-push.sh reads secrets here.
       - /etc/environment:/etc/host-environment:ro
       - type: bind
         source: ${EST_BACKUP_SRC:-/mnt/backup/work}
@@ -27,11 +27,49 @@ services:
         read_only: true
         bind:
           propagation: rslave
-      - ./_common/rclone-sync.sh:/rclone-sync.sh:ro
+      - s3sync-cache:/cache
       - ./_common/gotify-notify.sh:/gotify-notify.sh:ro
       - ./s3-push.sh:/s3-push.sh:ro
       - ./filters.txt:/filters.txt:ro
       - ./crontab:/etc/crontabs/root:ro
+  backrest:
+    image: garethgeorge/backrest:v1.14.1
+    container_name: backrest
+    hostname: backrest
+    restart: unless-stopped
+    entrypoint: ["/sbin/tini", "--", "/bin/sh", "/backrest-env.sh"]
+    command: ["/backrest"]
+    env_file:
+      - path: /etc/environment
+        required: false
+    environment:
+      BACKREST_DATA: /var/lib/backrest
+      BACKREST_CONFIG: /config/config.json
+      BACKREST_PORT: 0.0.0.0:9898
+      XDG_CACHE_HOME: /cache
+      TZ: UTC
+    volumes:
+      - /etc/timezone:/etc/timezone:ro
+      - /etc/localtime:/etc/localtime:ro
+      - /etc/environment:/etc/host-environment:ro
+      - backrest-config:/config
+      - backrest-data:/var/lib/backrest
+      - backrest-cache:/cache
+      # Recovered files land on the host. Snapshot paths start at /data.
+      - /mnt/backup/restore:/restore
+      - ./backrest-env.sh:/backrest-env.sh:ro
+    labels:
+      - traefik.enable=true
+      - traefik.http.routers.backrest.rule=Host(`backrest.tecronin.uk`)
+      - traefik.http.routers.backrest.entrypoints=websecure
+      - traefik.http.middlewares.backrest-lan.ipallowlist.sourcerange=192.168.1.0/24,10.9.0.0/24
+      - traefik.http.routers.backrest.middlewares=backrest-lan
+      - traefik.http.services.backrest.loadbalancer.server.port=9898
+volumes:
+  s3sync-cache:
+  backrest-config:
+  backrest-data:
+  backrest-cache:
 networks:
   default:
     external: true

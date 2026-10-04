@@ -77,7 +77,7 @@ never deployed.
 | [rabbitmq](https://www.rabbitmq.com/) | `mq.tecronin.uk` | management UI; AMQP and MQTT published on the LAN |
 | timescaledb, mariadb | — | LAN-only datastores |
 | gdrive | — | offsite sync for backup paths with no owning stack |
-| s3sync | — | push NAS work backup (`/mnt/backup/work`) to AWS S3 |
+| s3sync | `backrest.tecronin.uk` | Restic backup of the NAS work tree (`/mnt/backup/work`) to AWS S3; Backrest browses and restores |
 | restorer | — | throwaway ubuntu shell for poking at volumes |
 
 `weather.tecronin.uk` is routed too, but its backend is WeatherWatch on `tec-weather`, not a

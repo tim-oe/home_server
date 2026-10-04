@@ -40,12 +40,13 @@ JSON `accessLog` is on. Filter public traffic with
 | `mq.tecronin.uk` | rabbitmq:15672 | labels | no |
 | `openhab.tecronin.uk` | openhab:8881 | labels | no |
 | `gotify.tecronin.uk` | gotify:80 | labels | no |
+| `backrest.tecronin.uk` | backrest:9898 | labels + `backrest-lan` ipAllowList | no |
 | `unifi.tecronin.uk` | unifi-os-server:443 (https) | labels + `unifi@file` + `unifi-os-lan` ipAllowList | no |
 | `weather.tecronin.uk` | tec-weather.localdomain:8000 (WeatherWatch) | file provider | **yes** |
 
 `prometheus.tecronin.uk` is LAN-only. Prometheus has no authentication of its own.
 `lan-only@file` now also applies to every `websecure` router; the per-service ipAllowList
-labels on prometheus, vaultwarden, unifi-os, and forgejo stay as a must-never-be-public marker.
+labels on prometheus, vaultwarden, unifi-os, forgejo, and backrest stay as a must-never-be-public marker.
 The deprecated `unifi` stack is not routed; `unifi.tecronin.uk` is UniFi OS Server.
 
 velxio's Host override is a label, not a file exception — the

@@ -1,5 +1,6 @@
 #!/bin/sh
-# One-way push of EST_BACKUP_SRC to the configured S3 bucket. Called from crond.
+# Restic backup of EST_BACKUP_SRC to the configured S3 bucket. Called from crond.
+# Chunks already stored are not uploaded again, so a rerun resumes an interrupted backup.
 set -eu
 PATH="/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
 
@@ -29,17 +30,19 @@ load_host_environment() {
       EST_BACKUP_BUCKET) export EST_BACKUP_BUCKET="$val" ;;
       EST_BACKUP_AWS_REGION) export EST_BACKUP_AWS_REGION="$val" ;;
       EST_BACKUP_SRC) export EST_BACKUP_SRC="$val" ;;
+      RESTIC_PASSWORD|KEEP_WEEKLY) export "$key=$val" ;;
       GOTIFY_TOKEN|GOTIFY_APP_TOKEN) export "$key=$val" ;;
     esac
   done < "$host_env"
 }
 load_host_environment
 
-# Same as other rclone stacks: GOTIFY_APP_TOKEN in host /etc/environment, not Grafana's GOTIFY_TOKEN.
 export GOTIFY_TOKEN="${GOTIFY_APP_TOKEN:-${GOTIFY_TOKEN:-}}"
 . /gotify-notify.sh
 QUIET_MINUTES="${QUIET_MINUTES:-30}"
-MAX_DELETE="${MAX_DELETE:-50}"
+KEEP_WEEKLY="${KEEP_WEEKLY:-4}"
+RESTIC_CACHE_DIR="${RESTIC_CACHE_DIR:-/cache}"
+export RESTIC_CACHE_DIR
 
 notify() {
   echo "$2: $3"
@@ -57,18 +60,52 @@ fail_config() {
 [ -n "${EST_BACKUP_KEY:-}" ] || fail_config "EST_BACKUP_KEY is required"
 [ -n "${EST_BACKUP_BUCKET:-}" ] || fail_config "EST_BACKUP_BUCKET is required"
 [ -n "${EST_BACKUP_AWS_REGION:-}" ] || fail_config "EST_BACKUP_AWS_REGION is required"
+[ -n "${RESTIC_PASSWORD:-}" ] || fail_config "RESTIC_PASSWORD is required"
+case "$KEEP_WEEKLY" in
+  ''|*[!0-9]*) fail_config "KEEP_WEEKLY must be a positive number of weeks" ;;
+esac
+[ "$KEEP_WEEKLY" -ge 1 ] || fail_config "KEEP_WEEKLY must be a positive number of weeks"
 
-export RCLONE_CONFIG_S3_TYPE=s3
-export RCLONE_CONFIG_S3_PROVIDER=AWS
-export RCLONE_CONFIG_S3_REGION="$EST_BACKUP_AWS_REGION"
-export RCLONE_CONFIG_S3_ACCESS_KEY_ID="$EST_BACKUP_ID"
-export RCLONE_CONFIG_S3_SECRET_ACCESS_KEY="$EST_BACKUP_KEY"
-export RCLONE_SRC=/data
-export RCLONE_DEST="s3:${EST_BACKUP_BUCKET}"
+export AWS_ACCESS_KEY_ID="$EST_BACKUP_ID"
+export AWS_SECRET_ACCESS_KEY="$EST_BACKUP_KEY"
+export AWS_DEFAULT_REGION="$EST_BACKUP_AWS_REGION"
+export AWS_REGION="$EST_BACKUP_AWS_REGION"
+export RESTIC_REPOSITORY="s3:s3.${EST_BACKUP_AWS_REGION}.amazonaws.com/${EST_BACKUP_BUCKET}"
+export RESTIC_PASSWORD
+
+# Prune repacks objects, so every restic command that writes uses STANDARD.
+# Infrequent Access bills a 30-day minimum and a retrieval fee on those rewrites.
+restic_cmd() {
+  restic -o s3.storage-class=STANDARD "$@"
+}
+
+ensure_repo() {
+  if restic_cmd cat config >/dev/null 2>/tmp/restic-open.err; then
+    rm -f /tmp/restic-open.err
+    echo "s3-push: repository ready"
+    return 0
+  fi
+  err=$(cat /tmp/restic-open.err 2>/dev/null || true)
+  rm -f /tmp/restic-open.err
+  case "$err" in
+    *wrong\ password*|*no\ key\ found*|*ciphertext\ verification\ failed*)
+      fail_config "RESTIC_PASSWORD was rejected by the existing repository"
+      ;;
+  esac
+  echo "s3-push: initializing repository ${RESTIC_REPOSITORY}"
+  if ! restic_cmd init; then
+    fail_config "restic init failed for ${RESTIC_REPOSITORY}"
+  fi
+}
+
+if [ "${SNAPSHOTS_ONLY:-0}" = 1 ]; then
+  restic_cmd snapshots --no-lock --host s3sync
+  exit 0
+fi
 
 exec 9>/tmp/s3sync.lock
 if ! flock -n 9; then
-  notify 5 "s3sync skipped" "previous push still running"
+  notify 5 "s3sync skipped" "previous backup still running"
   exit 0
 fi
 
@@ -92,23 +129,36 @@ elif [ -n "$(find "$QUIET_MARKER" -mmin "-${QUIET_MINUTES}" 2>/dev/null)" ]; the
   exit 0
 fi
 
-RCLONE_FLAGS="--filter-from /filters.txt --max-delete ${MAX_DELETE}"
-RCLONE_FLAGS="$RCLONE_FLAGS --transfers 2 --s3-upload-concurrency 4 --s3-chunk-size 64M --s3-disable-checksum"
-RCLONE_FLAGS="$RCLONE_FLAGS --s3-storage-class STANDARD_IA --s3-no-check-bucket"
-RCLONE_FLAGS="$RCLONE_FLAGS --retries 5 --low-level-retries 20"
-RCLONE_FLAGS="$RCLONE_FLAGS -v --stats 5m --stats-one-line"
-if [ -n "${BWLIMIT:-}" ]; then
-  RCLONE_FLAGS="$RCLONE_FLAGS --bwlimit ${BWLIMIT}"
-fi
-if [ -n "${RCLONE_EXTRA:-}" ]; then
-  RCLONE_FLAGS="$RCLONE_FLAGS ${RCLONE_EXTRA}"
-fi
-export RCLONE_FLAGS
+ensure_repo
 
+echo "s3-push: restic backup /data -> ${RESTIC_REPOSITORY}"
 started=$(date +%s)
-if /bin/sh /rclone-sync.sh; then
-  elapsed=$(( $(date +%s) - started ))
-  notify 3 "s3sync complete" "pushed ${RCLONE_SRC} -> ${RCLONE_DEST} in ${elapsed}s"
+set +e
+restic_cmd backup /data \
+  --exclude-file /filters.txt \
+  --host s3sync \
+  --tag work
+backup_rc=$?
+set -e
+if [ "$backup_rc" -ne 0 ] && [ "$backup_rc" -ne 3 ]; then
+  notify 8 "s3sync failed" "restic backup /data failed (exit ${backup_rc}); rerun resumes uploaded chunks"
+  exit "$backup_rc"
+fi
+
+# Forget only after a snapshot exists. Prune would otherwise delete chunks from
+# an interrupted run that are not referenced yet.
+set +e
+restic_cmd forget --keep-weekly "$KEEP_WEEKLY" --prune --host s3sync
+forget_rc=$?
+set -e
+if [ "$forget_rc" -ne 0 ]; then
+  notify 8 "s3sync failed" "restic forget --keep-weekly ${KEEP_WEEKLY} failed (exit ${forget_rc})"
+  exit "$forget_rc"
+fi
+
+elapsed=$(( $(date +%s) - started ))
+if [ "$backup_rc" -eq 3 ]; then
+  notify 5 "s3sync complete with warnings" "snapshot kept some unreadable files; ${elapsed}s, keep-weekly ${KEEP_WEEKLY}"
 else
-  exit $?
+  notify 3 "s3sync complete" "snapshot of /data in ${elapsed}s, keep-weekly ${KEEP_WEEKLY}"
 fi

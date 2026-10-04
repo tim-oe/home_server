@@ -132,7 +132,7 @@ tasks.register('deployGdrive', GradleBuild) {
 }
 
 tasks.register('deployS3sync', GradleBuild) {
-    description = 'deploy s3 work-backup push stack'
+    description = 'deploy s3 work-backup push stack and Backrest'
     group = "deploy stuff"
     buildName = 's3sync'
     startParameter.projectProperties = ['svc':'s3sync']

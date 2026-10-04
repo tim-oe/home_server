@@ -17,6 +17,9 @@
 # full name: <prefix>-<account id>-<region>-an. The BUCKET argument is that
 # prefix; a name that already ends with the suffix is used unchanged.
 #
+# Transfer Acceleration is enabled on every run so a client can use the
+# accelerate endpoint. A bucket name that contains a dot cannot use acceleration.
+#
 # Usage: s3-bucket.sh [--region REGION] BUCKET [USER_ARN]
 # Credentials come from the AWS CLI chain (env, AWS_PROFILE, shared config).
 set -euo pipefail
@@ -167,7 +170,7 @@ trace_block "create-bucket stdout" "$RUN_OUT"
 trace_block "create-bucket stderr" "$RUN_ERR"
 create_msg="$RUN_ERR"$'\n'"$RUN_OUT"
 if [ "$RUN_RC" -eq 0 ]; then
-  echo "created bucket: $bucket ($region)"
+  echo "created bucket: $bucket"
 elif grep -q 'BucketAlreadyOwnedByYou' <<<"$create_msg"; then
   echo "bucket exists: $bucket"
 elif grep -q 'BucketAlreadyExists' <<<"$create_msg"; then
@@ -192,6 +195,12 @@ trace "put-bucket-ownership-controls"
 aws s3api put-bucket-ownership-controls --bucket "$bucket" --region "$region" \
   --ownership-controls 'Rules=[{ObjectOwnership=BucketOwnerEnforced}]'
 echo "blocked public access: $bucket"
+
+trace "put-bucket-accelerate-configuration"
+aws s3api put-bucket-accelerate-configuration --bucket "$bucket" --region "$region" \
+  --accelerate-configuration Status=Enabled
+echo "transfer acceleration enabled: $bucket"
+echo "bucket name: $bucket"
 
 [ -n "$user_arn" ] || exit 0
 [ -n "$account" ] || { echo "sts get-caller-identity failed; cannot attach a policy" >&2; exit 1; }
@@ -305,3 +314,4 @@ aws s3api put-bucket-policy --bucket "$bucket" --region "$region" \
   --policy "file://${tmp}/bucket.json"
 echo "bucket policy linked to $user_arn"
 echo "exempt from deny: $(jq -r 'join(", ")' <<<"$exempt")"
+echo "bucket name: $bucket"
