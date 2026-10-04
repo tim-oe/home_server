@@ -1,0 +1,4 @@
+PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+
+# After local work backup to NAS; adjust if the upstream job runs later.
+30 1 * * * /bin/sh /s3-push.sh

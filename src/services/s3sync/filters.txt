@@ -1,0 +1,5 @@
+# VirtualBox noise and partial files; VM disks and snapshots are kept.
+- **/Logs/**
+- *.lck
+- *.tmp
+- *.part

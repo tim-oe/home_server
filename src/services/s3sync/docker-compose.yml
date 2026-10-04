@@ -1,0 +1,38 @@
+# Push /mnt/backup/work to the EST_BACKUP_* S3 bucket on a schedule.
+# Credentials and paths come from host /etc/environment (env_file below).
+---
+services:
+  s3sync:
+    image: rclone/rclone:1.75.0
+    container_name: s3sync
+    hostname: s3sync
+    restart: unless-stopped
+    entrypoint: ["/usr/sbin/crond", "-f", "-d", "8"]
+    env_file:
+      - path: /etc/environment
+        required: false
+    environment:
+      PATH: /usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+      GOTIFY_URL: http://gotify
+      QUIET_MINUTES: "30"
+      MAX_DELETE: "50"
+    volumes:
+      - /etc/timezone:/etc/timezone:ro
+      - /etc/localtime:/etc/localtime:ro
+      # crond does not pass Docker env into jobs; s3-push.sh reads EST_BACKUP_* here.
+      - /etc/environment:/etc/host-environment:ro
+      - type: bind
+        source: ${EST_BACKUP_SRC:-/mnt/backup/work}
+        target: /data
+        read_only: true
+        bind:
+          propagation: rslave
+      - ./_common/rclone-sync.sh:/rclone-sync.sh:ro
+      - ./_common/gotify-notify.sh:/gotify-notify.sh:ro
+      - ./s3-push.sh:/s3-push.sh:ro
+      - ./filters.txt:/filters.txt:ro
+      - ./crontab:/etc/crontabs/root:ro
+networks:
+  default:
+    external: true
+    name: share-net

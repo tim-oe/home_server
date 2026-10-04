@@ -131,6 +131,14 @@ tasks.register('deployGdrive', GradleBuild) {
     tasks = ['deployService']
 }
 
+tasks.register('deployS3sync', GradleBuild) {
+    description = 'deploy s3 work-backup push stack'
+    group = "deploy stuff"
+    buildName = 's3sync'
+    startParameter.projectProperties = ['svc':'s3sync']
+    tasks = ['deployService']
+}
+
 tasks.register('deployObsidian', GradleBuild) {
     description = 'deploy obsidian scripts'
     group = "deploy stuff"
@@ -216,6 +224,21 @@ tasks.register('deployPrometheus', GradleBuild) {
     tasks = ['deployService']
 }
 
+tasks.register('deployRustdesk', GradleBuild) {
+    description = 'deploy rustdesk scripts and create backup dir'
+    group = "deploy stuff"
+    buildName = 'rustdesk'
+    startParameter.projectProperties = ['svc':'rustdesk']
+    tasks = ['deployService']
+    doFirst {
+        ssh.run {
+            session(remotes.desktop) {
+                executeSudo 'mkdir -p /mnt/backup/docker/rustdesk'
+            }
+        }
+    }
+}
+
 tasks.register('deployMariadb', GradleBuild) {
     description = 'deploy mariadb scripts (stack not in production yet)'
     group = "deploy stuff"
@@ -246,10 +269,12 @@ tasks.register('deployAll') {
         'deployVelxio',
         'deployTimescaledb',
         'deployGdrive',
+        'deployS3sync',
         'deployGotify',
         'deployForgejo',
         'deployDiun',
         'deployTraefik',
-        'deployPrometheus'
+        'deployPrometheus',
+        'deployRustdesk'
         ]
 }
