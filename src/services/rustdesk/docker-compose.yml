@@ -1,0 +1,86 @@
+# https://rustdesk.com/docs/en/self-host/rustdesk-server-oss/docker/
+# https://github.com/rustdesk/rustdesk-server/blob/1.1.16/docker/Dockerfile
+# rustdesk/rustdesk-server is the classic scratch image: no entrypoint, so it
+# only starts with an explicit `hbbs` or `hbbr` command. rustdesk-server-s6 is
+# the one-container image: s6 starts both, keys and the peer db are /data.
+---
+services:
+  rustdesk:
+    image: rustdesk/rustdesk-server-s6:1.1.16
+    container_name: rustdesk
+    hostname: rustdesk
+    restart: unless-stopped
+    environment:
+      # hbbs passes this to clients as the relay. The image default is
+      # relay.example.com. Port defaults to 21117.
+      - RELAY=192.168.1.35
+      # -k _: refuse clients that do not present id_ed25519.pub
+      - ENCRYPTED_ONLY=1
+    ports:
+      # LAN IP only. A bare publish is reachable on every host interface
+      # because Docker inserts its rules ahead of ufw. WireGuard still
+      # reaches this address through OPNsense. Not HTTP, so Traefik does
+      # not route these.
+      - "192.168.1.35:21115:21115"       # NAT type test
+      - "192.168.1.35:21116:21116"       # TCP hole punching
+      - "192.168.1.35:21116:21116/udp"   # ID registration and heartbeat
+      - "192.168.1.35:21117:21117"       # relay
+      - "192.168.1.35:21118:21118"       # web client (hbbs)
+      - "192.168.1.35:21119:21119"       # web client (hbbr)
+    volumes:
+      - rustdesk-data:/data
+      - /etc/timezone:/etc/timezone:ro
+      - /etc/localtime:/etc/localtime:ro
+    labels:
+      - docker-volume-backup.stop-during-backup=rustdesk.stop
+  backup:
+    # https://github.com/offen/docker-volume-backup/
+    image: offen/docker-volume-backup:v2.48.2
+    container_name: rustdesk-backup
+    restart: always
+    environment:
+      EXEC_LABEL: rustdesk
+      BACKUP_STOP_DURING_BACKUP_LABEL: rustdesk.stop
+      BACKUP_CRON_EXPRESSION: "25 02 * * *"
+      BACKUP_FILENAME: backup-%Y-%m-%dT%H-%M-%S.tar.gz
+      BACKUP_PRUNING_PREFIX: backup-
+      BACKUP_RETENTION_DAYS: 7
+    volumes:
+      - /etc/timezone:/etc/timezone:ro
+      - /etc/localtime:/etc/localtime:ro
+      - rustdesk-data:/backup:ro
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - /mnt/backup/docker/rustdesk:/archive
+    labels:
+      - diun.enable=false
+  gdrive:
+    image: rclone/rclone:1.75.0
+    container_name: rustdesk-gdrive
+    restart: unless-stopped
+    # alpine busybox sleep has no infinity; idle until offen execs prune-post
+    entrypoint: ["tail", "-f", "/dev/null"]
+    env_file:
+      - path: /etc/environment
+        required: false
+    environment:
+      PATH: /usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+      RCLONE_SRC: /archive
+      RCLONE_DEST: gdrive:/backup/services/rustdesk
+      GOTIFY_URL: http://gotify
+    volumes:
+      - /etc/timezone:/etc/timezone:ro
+      - /etc/localtime:/etc/localtime:ro
+      - /root/.config/rclone/rclone.conf:/config/rclone/rclone.conf:ro
+      - /mnt/backup/docker/rustdesk:/archive:ro
+      - ./_common/rclone-sync.sh:/rclone-sync.sh:ro
+    labels:
+      - docker-volume-backup.exec-label=rustdesk
+      - docker-volume-backup.prune-post=/bin/sh /rclone-sync.sh
+      - diun.enable=false
+volumes:
+  rustdesk-data:
+    name: rustdesk-data
+networks:
+  default:
+    external: true
+    name: share-net
