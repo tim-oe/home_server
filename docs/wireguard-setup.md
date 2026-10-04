@@ -61,20 +61,19 @@ Create a client configuration file (e.g., `wg-client.conf`):
 [Interface]
 Address = 10.9.0.2/24
 PrivateKey = <client-private-key>
-DNS = 1.1.1.1, 1.0.0.1
+DNS = 10.9.0.1
 
 [Peer]
 PublicKey = <server-public-key-from-instance>
-Endpoint = <your-public-ip>:51820
+Endpoint = vpn.tecronin.uk:51820
 AllowedIPs = 0.0.0.0/0
 PersistentKeepalive = 30
 ```
 
-**DNS Options:**
-
-- Use `1.1.1.1, 1.0.0.1` (Cloudflare) for fast public DNS
-- Use `8.8.8.8, 8.8.4.4` (Google) as alternative
-- Use `10.9.0.1` to route DNS through OPNsense (slower but more private)
+**DNS is mandatory:** `DNS = 10.9.0.1` (Unbound on OPNsense). Private service names
+only resolve to `192.168.1.35` via split-horizon overrides. Public DNS (`1.1.1.1`,
+`8.8.8.8`) returns the WAN IP; after LAN-only Traefik routing those requests land on
+the `public` entrypoint and 404 (or are dropped by the Cloudflare-ranges alias).
 
 **AllowedIPs Options:**
 
@@ -180,9 +179,11 @@ IP forwarding should already be enabled on OPNsense, but verify:
    - **Value:** `1`
    - **Description:** Enable IP forwarding
 
-## Part 9: Optional DNS Configuration
+## Part 9: DNS Configuration
 
-If using OPNsense as DNS server for VPN clients:
+VPN clients **must** use OPNsense as DNS (`DNS = 10.9.0.1` in the client config).
+That is what makes `grafana.tecronin.uk` (and the other private names) resolve to
+the LAN address.
 
 ### Allow DNS Queries from WireGuard
 
@@ -197,11 +198,47 @@ If using OPNsense as DNS server for VPN clients:
 
 ### Configure Unbound for WireGuard
 
-1. Go to **Services → Unbound DNS → Access Lists**
-2. Add WireGuard network (10.9.0.0/24) to allowed networks
-3. Or go to **Services → Unbound DNS → General**
-4. Enable **DNS Query Forwarding**
-5. Add upstream DNS servers (1.1.1.1, 8.8.8.8, etc.)
+1. **Services → Unbound DNS → General → Network Interfaces** — All, or include the
+   WireGuard interface. If this is LAN-only, `DNS = 10.9.0.1` times out (ICMP to
+   `10.9.0.1` still works). Until that is fixed, `DNS = 192.168.1.1` is a valid
+   fallback: Unbound already answers there and the host overrides are the same.
+2. **Services → Unbound DNS → Access Lists** — add `10.9.0.0/24`.
+3. Query forwarding / upstreams as already configured for the LAN.
+
+### Linux systemd-resolved
+
+`DNS =` in the WireGuard config is not enough. `resolvectl status` must show the
+wg link as a **default** DNS route. If it only has `DNS Domain: ~localdomain` and
+`-DefaultRoute`, `grafana.tecronin.uk` is answered by the hotspot/ISP resolver
+(public WAN IP) and Traefik times out or 403s.
+
+While the tunnel is up (use `192.168.1.1` if `dig @10.9.0.1` times out):
+
+```bash
+sudo resolvectl dns wg0 192.168.1.1
+sudo resolvectl domain wg0 '~.'
+sudo resolvectl default-route wg0 true
+dig +short grafana.tecronin.uk    # must be 192.168.1.35
+```
+
+Ubuntu 24: `DNS =` in the `.conf` is ignored. Use `PostUp` instead of `~localdomain`
+(that only splits `*.localdomain` and leaves `*.tecronin.uk` on the hotspot resolver):
+
+```ini
+PostUp = resolvectl dns %i 192.168.1.1; resolvectl domain %i '~.'; resolvectl default-route %i true; timeout 10 sh -c 'until ping -c1 -W1 10.9.0.1 >/dev/null 2>&1; do sleep 1; done' || (wg-quick down %i && exit 1)
+PreDown = resolvectl revert %i
+```
+
+Persist on a NetworkManager connection:
+
+```bash
+nmcli connection modify <wg-connection> \
+  ipv4.dns 192.168.1.1 \
+  ipv4.ignore-auto-dns yes \
+  ipv4.dns-search '~.'
+```
+
+`~.` is a routing domain: send **all** names to this DNS, not only `*.localdomain`.
 
 ## Part 10: Testing and Verification
 
@@ -252,10 +289,10 @@ nslookup google.com
 - Check Outbound NAT configuration
 - Verify NAT rule for WireGuard subnet exists
 
-**Slow DNS resolution:**
+**Can ping gateway but private services 404:**
 
-- Use public DNS servers in client config (1.1.1.1, 8.8.8.8)
-- Or optimize Unbound DNS with fast upstream servers
+- Client `DNS` is still a public resolver. Set `DNS = 10.9.0.1` and reconnect.
+- `dig +short grafana.tecronin.uk` must return `192.168.1.35`, not the WAN IP.
 
 **No data received (0 B):**
 
@@ -276,7 +313,7 @@ nslookup google.com
 ```
 Internet
     ↓
-WAN Interface (97.235.59.83:51820)
+WAN Interface (vpn.tecronin.uk:51820)
     ↓
 OPNsense Firewall
     ↓
@@ -293,17 +330,21 @@ Local Network (192.168.1.0/24) ← Optional access
 
 ```ini
 AllowedIPs = 0.0.0.0/0
-DNS = 1.1.1.1, 1.0.0.1
+DNS = 10.9.0.1
 ```
 
 ### Scenario 2: Split Tunnel (Only Home Network Through VPN)
 
 ```ini
 AllowedIPs = 10.9.0.0/24, 192.168.1.0/24
-# Don't set DNS, use local DNS
+DNS = 10.9.0.1
 ```
 
-### Scenario 3: Privacy-Focused (All DNS Through VPN)
+Split tunnel still needs OPNsense DNS. Leaving DNS unset uses the client's ISP
+resolver, which returns the WAN IP; `192.168.1.35` is in `AllowedIPs` but the WAN
+IP is not, so the request leaves over the client's own internet connection.
+
+### Scenario 3: Full Tunnel (same as Scenario 1)
 
 ```ini
 AllowedIPs = 0.0.0.0/0
@@ -322,7 +363,7 @@ DNS = 10.9.0.1
 - [ ] WireGuard interface firewall rules allow traffic
 - [ ] **Outbound NAT configured for WireGuard subnet**
 - [ ] IP forwarding enabled
-- [ ] DNS configured (public or OPNsense)
+- [ ] DNS configured (`DNS = 10.9.0.1` on every client)
 - [ ] Client configuration created with proper DNS
 - [ ] Connection tested (ping gateway, internet, DNS)
 
@@ -334,5 +375,5 @@ DNS = 10.9.0.1
 
 ---
 
-*Last Updated: October 2025*
+*Last Updated: September 2026*
 *Tested on: OPNsense 25.7.6-amd64, FreeBSD 14.3-RELEASE-p4*

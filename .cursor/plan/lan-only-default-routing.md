@@ -22,12 +22,12 @@ Cloudflare DNS-01 wildcard cert are all in place.
 
 Each phase fails closed. Do not tighten the firewall source before wiki/weather are proxied.
 
-- [ ] **1** Repo edits, deploy Traefik and wiki. Steps 1–4 are one sitting (wiki/weather dark from WAN).
-- [ ] **2** Verify all 17 still work on `:443` from the LAN.
-- [ ] **3** WireGuard client `DNS = 10.9.0.1`; confirm a private service over cellular **before** pf.
-- [ ] **4** OPNsense forward to `192.168.1.35:8443`; delete duplicate 443 rule.
-- [ ] **5** Verify from outside.
-- [ ] **6** `src/bin/cloudflare-dns.sh` — proxy wiki/weather, pin `vpn` DNS-only, Full (strict).
+- [x] **1** Repo edits, deploy Traefik and wiki. Steps 1–4 are one sitting (wiki/weather dark from WAN).
+- [x] **2** Verify all 17 still work on `:443` from the LAN.
+- [x] **3** WireGuard client `DNS = 10.9.0.1`; confirm a private service over cellular **before** pf.
+- [x] **4** OPNsense forward to `192.168.1.35:8443`; delete duplicate 443 rule.
+- [x] **5** Verify from outside.
+- [x] **6** `src/bin/cloudflare-dns.sh` — proxy wiki/weather, pin `vpn` DNS-only, Full (strict).
 - [ ] **7** Cloudflare-ranges alias on the port-forward; rate-limit rule.
 - [ ] **8** Authenticated Origin Pulls (Cloudflare first, then Traefik `tls.yml`).
 - [ ] **9** DNSSEC at Cloudflare + DS at registrar — only after 1–8 work.
@@ -636,20 +636,41 @@ Tick the matching item in **Remaining** above as well. Each phase fails closed, 
 costs availability on wiki and weather, never exposure. Do not tighten the firewall source before the two
 records are proxied, or those two go dark.
 
-- [ ] **1** Repo edits, deploy Traefik and wiki. At this point everything is cut off from the internet,
+- [x] **1** Repo edits, deploy Traefik and wiki. At this point everything is cut off from the internet,
       because `lan-only@file` on `websecure` rejects WAN traffic still arriving on `:443`. Steps 1
       through 4 are one sitting, not separate evenings: wiki and weather are dark from the internet for
       the whole gap, so have the OPNsense tab open before running the deploy.
-- [ ] **2** Verify from the LAN that all 17 still work on `:443`.
-- [ ] **3** Update the WireGuard client config to `DNS = 10.9.0.1` and confirm from cellular that a
+  **Did (2026-09-07):** `8443` was free (old unifi gone). Traefik `public` :8443, `lan-only@file` on
+  `websecure`, accessLog on. Wiki `entrypoints=websecure,public` and `APP_PROXIES: "*"`. Script
+  `src/bin/cloudflare-dns.sh` written, not run. Traefik healthy; host listens 80/443/8443.
+- [x] **2** Verify from the LAN that all 17 still work on `:443`.
+  **Did (2026-09-07):** from `tec-pi-mgr` (`192.168.1.120`). Running stacks return 2xx/3xx on
+  `:443` (`jenkins /` is app 403, `/login` 200). `weather` Unbound override still missing
+  (resolves to WAN `97.135.219.212`); `--resolve` to `192.168.1.35:443` is 200. Add that
+  override with step 4. `velxio` and `openhab` containers are not running (Traefik 404,
+  OriginStatus 0) — pre-existing, not this change.
+- [x] **3** Update the WireGuard client config to `DNS = 10.9.0.1` and confirm from cellular that a
       private service is reachable over the tunnel. Do this **before** touching the firewall: after
       step 4 the VPN is the only remote route to 15 of the 17 services, so it needs to be known-good
       first.
-- [ ] **4** Flip the OPNsense forward to `192.168.1.35:8443` and delete the duplicate 443 rule. wiki
+  **Did (2026-09-07):** Ubuntu 24 `DNS=` ignored; `PostUp` had `resolvectl domain ~localdomain` so
+  `*.tecronin.uk` stayed on hotspot DNS. Fixed to `'~.'` + `default-route true`, DNS
+  `192.168.1.1` (`10.9.0.1:53` still times out — Unbound not on wg iface). From cellular+VPN:
+  `grafana.tecronin.uk` → `192.168.1.35`, `curl` 302 `/login`.
+- [x] **4** Flip the OPNsense forward to `192.168.1.35:8443` and delete the duplicate 443 rule. wiki
       and weather are public again; the other 15 now 404 from outside.
-- [ ] **5** Verify from outside.
-- [ ] **6** Run `src/bin/cloudflare-dns.sh`: proxies `wiki` and `weather`, pins `vpn` to DNS-only, sets
+  **Did (2026-09-07):** NAT WAN:443 → `192.168.1.35:8443`. Weather Unbound host override enabled
+  (`dig` → `192.168.1.35`, LAN HTTPS 200). Filter association was **Manual**; WAN:443 timed out
+  until set to **Pass**. Duplicate WAN 443 pass not deleted — Rules UI is migration assistant /
+  Rules [new]; do not migrate. Delete later on legacy **Firewall → Rules → WAN**.
+- [x] **5** Verify from outside.
+  **Did (2026-09-07):** hotspot, VPN off: `wiki` HTTP/2 302, `grafana` HTTP/2 404. Public
+  entrypoint only has wiki/weather. On VPN both 302 (split DNS to `:443`).
+- [x] **6** Run `src/bin/cloudflare-dns.sh`: proxies `wiki` and `weather`, pins `vpn` to DNS-only, sets
       Full (strict). Verify from outside again, and re-check that the tunnel still establishes.
+  **Did (2026-09-07):** created `wiki`/`weather` (proxied), `vpn` (DNS-only), CAA issue/issuewild,
+  ssl strict, always https, min TLS 1.2. Hotspot VPN off: wiki `server: cloudflare` 302; grafana
+  origin 404 (grey wildcard). Tunnel still used `wg.tecronin.uk`.
 - [ ] **7** Create the alias and set the port-forward source to it. Verify from outside a third time.
       Add the rate-limit rule while in the dashboard.
 - [ ] **8** Authenticated Origin Pulls: enable at Cloudflare, confirm wiki still loads, then add

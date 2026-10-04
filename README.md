@@ -64,8 +64,10 @@ never deployed.
 | [prometheus](https://prometheus.io/) | `prometheus.tecronin.uk` | LAN-only; node_exporter + cAdvisor + Traefik metrics, see [its README](src/services/prometheus/README.md) |
 | [unifi OS Server](https://github.com/lemker/unifi-os-server) | `unifi.tecronin.uk` | [self-hosting UniFi](https://help.ui.com/hc/en-us/articles/34210126298775-Self-Hosting-UniFi), see [its README](src/services/unifi-os/README.md) |
 | [vaultwarden](https://github.com/dani-garcia/vaultwarden) | `vaultwarden.tecronin.uk` | LAN-only |
+| [forgejo](https://forgejo.org/) | `git.tecronin.uk` | LAN-only; SSH on `:2222`; etckeeper remote |
 | [wiki](https://www.bookstackapp.com/) | `wiki.tecronin.uk` | BookStack plus its own MariaDB |
 | [gotify](https://gotify.net/) | `gotify.tecronin.uk` | notification target for backup failures, image alerts, and Grafana resource alerts |
+| [rustdesk](https://rustdesk.com/docs/en/self-host/rustdesk-server-oss/docker/) | — | ID and relay on `192.168.1.35`, LAN and WireGuard; see [its README](src/services/rustdesk/README.md) |
 | [DIUN](https://crazymax.dev/diun/) | — | notify-only image watch |
 | [portainer](https://www.portainer.io/) | `portainer.tecronin.uk` | |
 | [obsidian-remote](https://github.com/sytone/obsidian-remote) | `obsidian.tecronin.uk` | |
@@ -75,6 +77,7 @@ never deployed.
 | [rabbitmq](https://www.rabbitmq.com/) | `mq.tecronin.uk` | management UI; AMQP and MQTT published on the LAN |
 | timescaledb, mariadb | — | LAN-only datastores |
 | gdrive | — | offsite sync for backup paths with no owning stack |
+| s3sync | — | push NAS work backup (`/mnt/backup/work`) to AWS S3 |
 | restorer | — | throwaway ubuntu shell for poking at volumes |
 
 `weather.tecronin.uk` is routed too, but its backend is WeatherWatch on `tec-weather`, not a
@@ -94,6 +97,50 @@ Full route inventory, the three file-provider exceptions, and how to add a route
 A label change only takes effect once the container is recreated, so redeploy the stack and
 `docker compose up -d` it.
 
+## Forgejo
+
+Git remote for etckeeper. The UI is `https://git.tecronin.uk` (LAN and WireGuard only). Git
+pushes use SSH on `192.168.1.35:2222`. Data is one SQLite volume, `forgejo-data`.
+
+Split DNS is required before anything else works. On OPNsense, **Services → Unbound DNS →
+Overrides → Host Overrides**, add `git.tecronin.uk` → `192.168.1.35`. Confirm from the host
+with `dig +short git.tecronin.uk`; the answer must be `192.168.1.35`. A name with no override
+resolves to the WAN address, and port 2222 is not forwarded, so every push fails.
+
+First boot:
+
+1. `./gradlew deployForgejo`.
+2. On the host, write `BACKUP_GPG_PASSPHRASE=<passphrase>` to `/mnt/raid/services/forgejo/.env`
+   (after deploy, so gradle `put` does not clobber it) and store the passphrase in Vaultwarden.
+   Optional mail uses the same `SMTP_*` names as Vaultwarden, plus
+   `FORGEJO_MAILER_ENABLED=true`. Then `sudo docker compose up -d` in
+   `/mnt/raid/services/forgejo`.
+3. Create the admin user (registration is disabled and the install wizard is skipped):
+   `docker exec -u git forgejo forgejo admin user create --admin --username <name> --email <email> --random-password`.
+4. Create the Forgejo user `etckeeper` and add its public key under that user's SSH keys.
+   The same key is installed on every etckeeper host; a deploy key cannot be reused across repos.
+5. Create an API token for that user so the Ansible role can create one private repo per host.
+   In the UI: user **Settings → Applications → Generate New Token**, with repository and
+   organization write access. Store the token in Ansible Vault next to the private key.
+
+What the etckeeper role needs:
+
+| Item | Value |
+|---|---|
+| Remote | `git@git.tecronin.uk:<hostname>/etc.git`, one private repo per host |
+| SSH port | `2222`, bound to `192.168.1.35` (`Port 2222` and `User git` in `/root/.ssh/config`) |
+| SSH auth | public key on the Forgejo user `etckeeper`; the role installs the vault-encrypted private key |
+| Repo create | `POST /api/v1/user/repos` or `POST /api/v1/orgs/{org}/repos` with `Authorization: token <token>` |
+| Host key | lives in `forgejo-data`; a restore keeps it, so a pinned `known_hosts` entry stays valid |
+| Downtime | the container is stopped for the 02:15 cold backup; a push in that window fails and etckeeper's `99push` is non-fatal |
+| Availability | LAN and WireGuard only |
+
+The role owns two things this side is relying on: `/etc/.gitignore` for private key material
+(`ssh/ssh_host_*_key`, `wireguard/`, `ssl/private/`) must exist before the `etckeeper` package
+task, because Ubuntu's postinst makes the first commit during install; and `PUSH_REMOTE` must
+stay unset until the repo exists and the first push has been done interactively as root, so
+`known_hosts` is populated for the later non-interactive apt-hook pushes.
+
 ## Backups
 
 Three tiers, in the order data moves: named volume → NAS → Google Drive.
@@ -101,17 +148,19 @@ Three tiers, in the order data moves: named volume → NAS → Google Drive.
 ### Volume archives to the NAS
 
 Stacks holding data that cannot be rebuilt run an [offen/docker-volume-backup](https://github.com/offen/docker-volume-backup/)
-sidecar: **vaultwarden, unifi-os, wiki, gotify, traefik, grafana** (plus mariadb, deferred). Each sidecar has its own cron, writes a timestamped `.tar.gz` into
+sidecar: **vaultwarden, unifi-os, wiki, gotify, traefik, grafana, forgejo, rustdesk** (plus mariadb, deferred). Each sidecar has its own cron, writes a timestamped `.tar.gz` into
 `/mnt/backup/docker/<svc>`, and prunes it to `BACKUP_RETENTION_DAYS: 7` by matching
 `BACKUP_PRUNING_PREFIX`.
 
 Two conventions matter:
 
-- **`docker-volume-backup.stop-during-backup=true`** on every container in the stack, so volumes are
-  copied cold. No hot copies, no per-container judgement about which volume holds a datastore.
+- **`docker-volume-backup.stop-during-backup=<stack>.stop`** on every container in the stack, and the
+  same token in the sidecar's `BACKUP_STOP_DURING_BACKUP_LABEL`. The default value `true` is global:
+  any sidecar stops every container on the host that carries it. No hot copies, no per-container
+  judgement about which volume holds a datastore.
 - **`EXEC_LABEL`** on every sidecar, matched by `docker-volume-backup.exec-label` on the containers
   it may exec into. Without it, offen runs lifecycle hooks on *every* labelled container on the
-  host, and hooks cross-fire between stacks.
+  host, and hooks cross-fire between stacks. This does not scope the stop label.
 
 | Stack | Volume archived | Runs at |
 |---|---|---|
@@ -122,11 +171,17 @@ Two conventions matter:
 | gotify | `gotify-data` | 01:45 |
 | traefik | `traefik-acme` | 01:50 |
 | wiki | `mariadb_data`, `bookstack_config` | 02:00 |
+| forgejo | `forgejo-data` (the one GPG-encrypted archive) | 02:15 |
+| rustdesk | `rustdesk-data` | 02:25 |
 
 MariaDB is the one exception to stopping. It is the only stack close to needing 24/7 availability,
 so instead of a cold copy it takes a logical dump: `dump.sh` runs as an `archive-pre` hook
 (`mariadb-dump --all-databases --single-transaction --routines --events --hex-blob`) and offen
 archives the resulting `mariadb-dumps` volume rather than `mariadb-data`.
+
+Forgejo is stopped for the 02:15 cold copy, so a git push in that window is refused. That is
+expected. The archive is `backup-<ts>.tar.gz.gpg` because etckeeper history holds `/etc/shadow`
+and private keys in plaintext. The passphrase lives in Vaultwarden.
 
 ### Offsite to Google Drive
 
@@ -152,6 +207,8 @@ to Gotify on a non-zero exit.
 | `/mnt/backup/docker/grafana` | `gdrive:/backup/services/grafana` |
 | `/mnt/backup/docker/traefik` | `gdrive:/backup/services/traefik` |
 | `/mnt/backup/docker/wiki` | `gdrive:/backup/docker/wiki` |
+| `/mnt/backup/docker/forgejo` | `gdrive:/backup/services/forgejo` |
+| `/mnt/backup/docker/rustdesk` | `gdrive:/backup/services/rustdesk` |
 | `/mnt/backup/docker/services` | `gdrive:/backup/docker/services` |
 | `/mnt/backup/weather/db` | `gdrive:/backup/weather/db` |
 
@@ -175,6 +232,8 @@ cron and the `/opt/rclone` install.
 ### Restore
 
 - [restore volumes from backup](https://offen.github.io/docker-volume-backup/how-tos/restore-volumes-from-backup.html) — verified by hand for vaultwarden
+- forgejo: `gpg -d backup-<ts>.tar.gz.gpg | tar xz` (passphrase in Vaultwarden), then the same
+  volume restore as the other stacks
 - the `restorer` stack mounts a scratch volume plus a backup volume read-only, for unpacking an
   archive into a fresh volume before pointing a service at it
 
@@ -235,7 +294,6 @@ alerts once — from `vaultwarden-backup` and `gdrive-sync` respectively.
 - [authentik](https://docs.goauthentik.io/docs/install-config/install/docker-compose)
 - [uptime-kuma](https://github.com/louislam/uptime-kuma)
 - [netbox](https://github.com/netbox-community/netbox)
-- [rustdesk](https://rustdesk.com/docs/en/self-host/rustdesk-server-oss/docker/)
 - [speedtest-tracker](https://github.com/alexjustesen/speedtest-tracker)
 - [cockpit](https://hub.docker.com/r/markdegroot/cockpit-ubuntu)
 

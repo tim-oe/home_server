@@ -80,6 +80,15 @@ node_exporter on each host (`:9100`), cAdvisor for containers on tec-desktop, Tr
 
 ## Security Services
 
+### RustDesk
+- **Purpose**: Self-hosted remote desktop ID server and relay
+- **Configuration Location**: `src/services/rustdesk/` — see [its README](../src/services/rustdesk/README.md)
+- **Default Port**: 21116 (UDP heartbeat and ID; relay is 21117), bound to `192.168.1.35`
+- **Configuration Steps**:
+  1. `./gradlew deployRustdesk`, then `docker compose up -d` on the host
+  2. Read `id_ed25519.pub` from the `rustdesk-data` volume and set it on each client
+  3. ID server `192.168.1.35`. Clients must present the key (`ENCRYPTED_ONLY=1`)
+
 ### Vaultwarden
 - **Purpose**: Password management system
 - **Configuration Location**: `src/services/vaultwarden/`
@@ -108,13 +117,16 @@ TLS is no longer a separate service. Traefik's ACME resolver issues and renews t
 ### Docker Volume Backup
 - **Purpose**: Data persistence and backup
 - **Configuration Location**: per stack, not central — an `offen/docker-volume-backup` sidecar in
-  each of `vaultwarden`, `unifi-os`, `wiki`, `gotify`, `traefik`, `grafana` (and `mariadb`, deferred), paired
+  each of `vaultwarden`, `unifi-os`, `wiki`, `gotify`, `traefik`, `grafana`, `forgejo`, `rustdesk` (and `mariadb`, deferred), paired
   with an `rclone` sidecar for the offsite push
 - **Configuration Steps**:
   1. Volume selection: mount it `:ro` under `/backup` in the sidecar
   2. Schedule via `BACKUP_CRON_EXPRESSION`, retention via `BACKUP_RETENTION_DAYS`
-  3. `docker-volume-backup.stop-during-backup=true` on every container in the stack
-  4. `EXEC_LABEL` on the sidecar so lifecycle hooks do not cross-fire between stacks
+  3. `docker-volume-backup.stop-during-backup=<stack>.stop` on every container in the stack, and the
+     same token in the sidecar's `BACKUP_STOP_DURING_BACKUP_LABEL`. The value `true` is global and
+     stops every labeled container on the host
+  4. `EXEC_LABEL` on the sidecar so lifecycle hooks do not cross-fire between stacks. This does not
+     scope which containers are stopped
 - See the backup section of the [main README](../README.md) for the full picture
 
 ## Home Automation
@@ -215,6 +227,7 @@ graph TD
 | Vaultwarden | 8860 | HTTP | Password Manager |
 | Portainer | 8050 | HTTP | Container Management (container 9000) |
 | OpenHAB | 8881 | HTTP | Home Automation |
+| RustDesk | 21115–21119 | TCP, plus 21116 UDP | ID server and relay, bound to `192.168.1.35` |
 
 Ports here are the host-published ones, used for troubleshooting. Normal access is
 `https://<svc>.tecronin.uk` through Traefik, which reaches each container over `share-net`.
