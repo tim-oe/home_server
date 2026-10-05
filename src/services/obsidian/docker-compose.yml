@@ -18,8 +18,6 @@ services:
       # sync local TZ and time
       - /etc/timezone:/etc/timezone:ro
       - /etc/localtime:/etc/localtime:ro
-    environment:
-      - TZ=Europe/London
     labels:
       # upstream only publishes latest; watch that tag's digest, not the whole repo
       - diun.watch_repo=false

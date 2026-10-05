@@ -21,18 +21,25 @@ services:
       # sync local TZ and time
       - /etc/timezone:/etc/timezone:ro
       - /etc/localtime:/etc/localtime:ro
+      - /etc/environment:/etc/host-environment:ro
+      - ./_common/map-env.sh:/map-env.sh:ro
+    entrypoint:
+      - /bin/sh
+      - /map-env.sh
+      - ADMIN_TOKEN=ADMIN_TOKEN
+      - SMTP_HOST=SMTP_HOST
+      - SMTP_FROM=SMTP_FROM
+      - SMTP_PORT=SMTP_PORT
+      - SMTP_SECURITY=SMTP_SECURITY
+      - SMTP_USERNAME=SMTP_USERNAME
+      - SMTP_PASSWORD=SMTP_PASSWORD
+      - DOMAIN=DOMAIN
+      - --
+    command: ["/start.sh"]
     environment:
       - ROCKET_PORT=8860
-      - ADMIN_TOKEN=${ADMIN_TOKEN}
       - WEBSOCKET_ENABLED=true
       - SIGNUPS_ALLOWED=false
-      - SMTP_HOST=${SMTP_HOST}
-      - SMTP_FROM=${SMTP_FROM}
-      - SMTP_PORT=${SMTP_PORT}
-      - SMTP_SECURITY=${SMTP_SECURITY}
-      - SMTP_USERNAME=${SMTP_USERNAME}
-      - SMTP_PASSWORD=${SMTP_PASSWORD}
-      - DOMAIN=${DOMAIN}
       # configs
       - globalSettings__attachment__baseDirectory=/data/attachments
       - globalSettings__attachment__baseUrl=https://vaultwarden.tecronin.uk/attachments

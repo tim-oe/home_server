@@ -5,19 +5,29 @@ services:
     # hostname needed or it rebuilds data every restart
     hostname: "rabbitmq"
     restart: unless-stopped
-    command: sh -c "rabbitmq-plugins enable rabbitmq_mqtt && rabbitmq-server"
+    entrypoint:
+      - /bin/sh
+      - /map-env.sh
+      - RABBITMQ_DEFAULT_USER=RABBITMQ_USERNAME
+      - RABBITMQ_DEFAULT_PASS=RABBITMQ_PASSWORD
+      - --
+    command:
+      - docker-entrypoint.sh
+      - sh
+      - -c
+      - rabbitmq-plugins enable rabbitmq_mqtt && rabbitmq-server
     ports:
       - "5672:5672"
       - "15672:15672"
       - "1883:1883"
-    environment:
-      RABBITMQ_DEFAULT_USER: ${RABBITMQ_USERNAME}
-      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASSWORD}
-      
     volumes:
       - rabbitmq_data:/var/lib/rabbitmq
       - ./.sbin:/root/bin
       - ./mqtt.conf:/etc/rabbitmq/conf.d/20-mqtt.conf:ro
+      - /etc/environment:/etc/host-environment:ro
+      - ./_common/map-env.sh:/map-env.sh:ro
+      - /etc/timezone:/etc/timezone:ro
+      - /etc/localtime:/etc/localtime:ro
     
     healthcheck:
       test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]

@@ -11,8 +11,12 @@ services:
       - "80:80"
       - "443:443"
       - "8443:8443"
-    environment:
-      CF_DNS_API_TOKEN: ${CF_DNS_API_TOKEN}
+    entrypoint:
+      - /bin/sh
+      - /map-env.sh
+      - CF_DNS_API_TOKEN=CF_DNS_API_TOKEN
+      - --
+    command: ["/entrypoint.sh", "traefik"]
     volumes:
       - ./traefik.yml:/etc/traefik/traefik.yml:ro
       - ./dynamic:/dynamic:ro
@@ -20,6 +24,8 @@ services:
       - /var/run/docker.sock:/var/run/docker.sock:ro
       - /etc/timezone:/etc/timezone:ro
       - /etc/localtime:/etc/localtime:ro
+      - /etc/environment:/etc/host-environment:ro
+      - ./_common/map-env.sh:/map-env.sh:ro
     extra_hosts:
       - "host.docker.internal:host-gateway"
     # Unbound on OPNsense. Docker's 127.0.0.11 does not resolve LAN DHCP names, so

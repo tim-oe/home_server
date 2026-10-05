@@ -1,0 +1,12 @@
+#!/bin/bash
+#
+# Bring back services an offen backup stopped and did not restart.
+# Every 5 minutes. A backup that is still running is left alone.
+# chown root:root
+# chmod 644
+#
+# Version: 1
+MAILTO=""
+PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+
+*/5 * * * * root /mnt/raid/bin/cron/ensure_backup_services.sh >> /var/log/backup-service-recover.log 2>&1

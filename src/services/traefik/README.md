@@ -136,7 +136,7 @@ which is watched. Full option list:
 |---|---|
 | [`entryPoints`](https://doc.traefik.io/traefik/v3.7/reference/install-configuration/entrypoints/) | `web` :80 redirects to `websecure` :443; `websecure` is LAN-only with `lan-only@file`; `public` :8443 is internet (wiki/weather only); `metrics` :8082 is unpublished and used for `/ping` plus Prometheus metrics |
 | [`entryPoints.websecure.http.tls`](https://doc.traefik.io/traefik/v3.7/reference/routing-configuration/http/tls/tls-certificates/) (and the same block on `public`) | the `tecronin.uk` + `*.tecronin.uk` wildcard is set on the entrypoint, so one cert covers every route and no router carries TLS labels |
-| [`certificatesResolvers.cloudflare.acme`](https://doc.traefik.io/traefik/v3.7/reference/install-configuration/tls/certificate-resolvers/acme/) | DNS-01 challenge, stored in `/letsencrypt/acme.json`. Provider credentials are [lego's Cloudflare env vars](https://go-acme.github.io/lego/dns/cloudflare/) — `CF_DNS_API_TOKEN` from `.env` |
+| [`certificatesResolvers.cloudflare.acme`](https://doc.traefik.io/traefik/v3.7/reference/install-configuration/tls/certificate-resolvers/acme/) | DNS-01 challenge, stored in `/letsencrypt/acme.json`. Provider credentials are [lego's Cloudflare env vars](https://go-acme.github.io/lego/dns/cloudflare/) — `CF_DNS_API_TOKEN` from the host `/etc/environment` |
 | [`providers.docker`](https://doc.traefik.io/traefik/v3.7/reference/install-configuration/providers/docker/) | `exposedByDefault: false` so nothing is routed by accident; `network: share-net` picks the right container IP; `allowEmptyServices: true` so a Docker healthcheck that is still `starting` (unifi-os) does not delete the router and 404 |
 | [`providers.file`](https://doc.traefik.io/traefik/v3.7/reference/install-configuration/providers/others/file/) | `directory: /dynamic`, `watch: true` |
 | [`api.dashboard`](https://doc.traefik.io/traefik/v3.7/reference/install-configuration/api-dashboard/) | built but with `insecure: false` and no router, so it is not reachable |
@@ -152,10 +152,8 @@ traefik` is the place to look.
 ```bash
 ./gradlew deployTraefik
 
-# on the host — after deploy, so gradle put does not clobber it
-# CF_DNS_API_TOKEN is the Cloudflare token used for DNS-01
-echo 'CF_DNS_API_TOKEN=<token>' > /mnt/raid/services/traefik/.env
-# optional, rclone failure alerts: GOTIFY_APP_TOKEN in host /etc/environment
+# on the host — CF_DNS_API_TOKEN in /etc/environment is the Cloudflare token used for DNS-01
+# optional, rclone failure alerts: GOTIFY_APP_TOKEN in the same file
 ```
 
 A label change needs `docker compose up -d` on that service so Traefik sees the new labels.

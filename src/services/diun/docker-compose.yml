@@ -15,7 +15,6 @@ services:
       # /diun.yml is not in the image workdir; -c is not a valid flag
       CONFIG: /diun.yml
       PATH: /usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
-      TZ: America/Chicago
       LOG_LEVEL: info
     volumes:
       - ./diun.yml:/diun.yml:ro

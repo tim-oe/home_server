@@ -9,17 +9,23 @@ services:
     restart: "unless-stopped"
     depends_on:
       - "db"
+    entrypoint:
+      - /bin/sh
+      - /map-env.sh
+      - SONAR_JDBC_PASSWORD=SONAR_DB_PASSWORD
+      - --
+    command: ["/opt/sonarqube/docker/entrypoint.sh"]
     environment:
       SONAR_JDBC_URL: "jdbc:postgresql://db:5432/sonar"
       SONAR_JDBC_USERNAME: "sonar"
-      SONAR_JDBC_PASSWORD: ${SONAR_DB_PASSWORD}
     volumes:
       - "sonarqube-data:/opt/sonarqube/data"
       - "sonarqube-extensions:/opt/sonarqube/extensions"
       - "./log:/opt/sonarqube/logs"
-      # sync local TZ and time
-      # - /etc/timezone:/etc/timezone:ro
-      # - /etc/localtime:/etc/localtime:ro
+      - /etc/environment:/etc/host-environment:ro
+      - ./_common/map-env.sh:/map-env.sh:ro
+      - /etc/timezone:/etc/timezone:ro
+      - /etc/localtime:/etc/localtime:ro
     ports:
       - target: 9000
         published: 9000
@@ -36,9 +42,14 @@ services:
     hostname: "postgresql"
     container_name: "postgresql"
     restart: "unless-stopped"
+    entrypoint:
+      - /bin/sh
+      - /map-env.sh
+      - POSTGRES_PASSWORD=SONAR_DB_PASSWORD
+      - --
+    command: ["docker-entrypoint.sh", "postgres"]
     environment:
       POSTGRES_USER: "sonar"
-      POSTGRES_PASSWORD: ${SONAR_DB_PASSWORD}
       POSTGRES_DB: "sonar"
     volumes:
       - "postgresql:/var/lib/postgresql"
@@ -46,6 +57,8 @@ services:
       # sync local TZ and time
       - /etc/timezone:/etc/timezone:ro
       - /etc/localtime:/etc/localtime:ro
+      - /etc/environment:/etc/host-environment:ro
+      - ./_common/map-env.sh:/map-env.sh:ro
 volumes:
   sonarqube-data:
     name: sonarqube-data

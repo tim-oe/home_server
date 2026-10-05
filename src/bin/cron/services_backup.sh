@@ -15,7 +15,7 @@ ROOT_DIR=/mnt/raid/services
 mkdir -p $BACKUP_DIR
 
 pushd $ROOT_DIR
-zip -9 -r $BACKUP_DIR/svc-$DATE.zip . /etc/environment
+zip -9 -r $BACKUP_DIR/svc-$DATE.zip . /etc/environment -x '*.log'
 popd
 
 # Remove old backups

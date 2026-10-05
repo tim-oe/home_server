@@ -47,8 +47,9 @@ cd /mnt/raid/services/vaultwarden && sudo docker compose up -d
 
 Every `deploy<Svc>` task delegates to `deployService`, which creates
 `/mnt/raid/services/<svc>`, copies the stack, and copies `_common/` into it. Secrets are **not** in
-this repo: each stack's `.env` is created once by hand at `/mnt/raid/services/<svc>/.env` and is
-never deployed.
+this repo. Service credentials live in the host `/etc/environment`. Each stack mounts that
+file and maps the keys its process expects. MariaDB is not in production yet and still
+reads `/mnt/raid/services/mariadb/.env`.
 
 `deployMariadb` is deliberately outside `deployAll` — that stack is not in production yet.
 
@@ -110,8 +111,8 @@ resolves to the WAN address, and port 2222 is not forwarded, so every push fails
 First boot:
 
 1. `./gradlew deployForgejo`.
-2. On the host, write `BACKUP_GPG_PASSPHRASE=<passphrase>` to `/mnt/raid/services/forgejo/.env`
-   (after deploy, so gradle `put` does not clobber it) and store the passphrase in Vaultwarden.
+2. On the host, add `BACKUP_GPG_PASSPHRASE=<passphrase>` to `/etc/environment`
+   and store the passphrase in Vaultwarden.
    Optional mail uses the same `SMTP_*` names as Vaultwarden, plus
    `FORGEJO_MAILER_ENABLED=true`. Then `sudo docker compose up -d` in
    `/mnt/raid/services/forgejo`.
@@ -161,6 +162,15 @@ Two conventions matter:
 - **`EXEC_LABEL`** on every sidecar, matched by `docker-volume-backup.exec-label` on the containers
   it may exec into. Without it, offen runs lifecycle hooks on *every* labelled container on the
   host, and hooks cross-fire between stacks. This does not scope the stop label.
+
+Offen restarts the stopped containers only if that same run reaches `Restarted N out of N`.
+A reboot or a killed sidecar before then leaves them exited, and `restart: unless-stopped`
+does not start a container Docker itself stopped. `ensure_backup_services.sh` runs every 5
+minutes from `/etc/cron.d/backup_recover_cron`. If a sidecar's latest run logged `Stopping N`
+with N > 0 and never logged `Restarted`, and that sidecar process is no longer the one that
+issued the stop, the script starts the matching containers and posts to Gotify. A run that is
+still going is left alone, including when an array check makes the archive slow. The script
+records each run it repaired, so a later manual stop of that service stays down.
 
 | Stack | Volume archived | Runs at |
 |---|---|---|
@@ -240,27 +250,19 @@ cron and the `/opt/rclone` install.
 ## Notifications
 
 [Gotify](https://gotify.net/) is the single notification target: rclone failures, DIUN image
-alerts, and Grafana resource alerts. Tokens live in the **host's** `/etc/environment`, which
-compose injects into the rclone sidecars and DIUN via `env_file`, except Grafana's alert token
-which lives in `/mnt/raid/services/grafana/.env` so it can be rotated without touching the host
-file. After Gotify's first boot, create three applications in its UI and add:
+alerts, and Grafana resource alerts. Tokens live in the **host's** `/etc/environment`.
+After Gotify's first boot, create three applications in its UI and add:
 
 ```
 GOTIFY_DEFAULTUSER_PASS=<admin-password>
 GOTIFY_APP_TOKEN=<rclone-app-token>
 DIUN_NOTIF_GOTIFY_TOKEN=<diun-app-token>
-```
-
-and, in the grafana stack `.env` only:
-
-```
 GOTIFY_TOKEN=<grafana-alert-app-token>
 ```
 
-Then `sudo docker compose up -d` those stacks so the containers pick it up. A stack `.env` next to
-`docker-compose.yml` is also loaded for Gotify and overrides `/etc/environment`. `/etc/environment`
-is world-readable; that is the tradeoff for keeping this to one file. The admin password is only
-applied on the first boot of an empty `gotify-data` volume.
+Then `sudo docker compose up -d` those stacks so the containers pick it up.
+`/etc/environment` is world-readable; that is the tradeoff for keeping this to one file.
+The admin password is only applied on the first boot of an empty `gotify-data` volume.
 
 ## Image updates (notify-only)
 

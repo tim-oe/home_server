@@ -8,6 +8,8 @@ services:
     volumes:
       - restorer:/restorer:rw
       - backup:/backup:ro
+      - /etc/timezone:/etc/timezone:ro
+      - /etc/localtime:/etc/localtime:ro
     labels:
       - diun.enable=false
 volumes:

@@ -19,6 +19,9 @@ services:
       LISTEN: "0.0.0.0"
       PORT: "8010"
       LOG_LEVEL: "debug"
+    volumes:
+      - /etc/timezone:/etc/timezone:ro
+      - /etc/localtime:/etc/localtime:ro
     labels:
       - traefik.enable=true
       - traefik.http.routers.upsdesktop.rule=Host(`upsdesktop.tecronin.uk`)
@@ -42,6 +45,9 @@ services:
       LISTEN: "0.0.0.0"
       PORT: "8020"
       LOG_LEVEL: "debug"
+    volumes:
+      - /etc/timezone:/etc/timezone:ro
+      - /etc/localtime:/etc/localtime:ro
     labels:
       - traefik.enable=true
       - traefik.http.routers.upspimgr.rule=Host(`upspimgr.tecronin.uk`)

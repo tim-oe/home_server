@@ -77,15 +77,8 @@ ro
 
 Provisioned under `src/services/grafana/provisioning/`. Contact point is a
 webhook to `http://gotify/message`. Create a **second** Gotify application
-(not DIUN's) so image-update and alert notifications mute independently:
-
-```bash
-# on the host, after deployGrafana has copied the stack
-# GRAFANA_USERNAME / GRAFANA_PASSWORD / GRAFANA_DOMAIN already live here
-echo 'GOTIFY_TOKEN=<grafana-gotify-app-token>' >> /mnt/raid/services/grafana/.env
-```
-
-`GOTIFY_TOKEN` is required; compose will refuse to start grafana without it.
+(not DIUN's) so image-update and alert notifications mute independently, and set
+`GOTIFY_TOKEN` in the host `/etc/environment`. Grafana reads it when it starts.
 
 ## Deployment (files only)
 

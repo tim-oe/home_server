@@ -15,8 +15,15 @@ services:
       - velxio-build:/var/lib/velxio-build
       - /etc/timezone:/etc/timezone:ro
       - /etc/localtime:/etc/localtime:ro
+      - /etc/environment:/etc/host-environment:ro
+      - ./_common/map-env.sh:/map-env.sh:ro
+    entrypoint:
+      - /bin/sh
+      - /map-env.sh
+      - SECRET_KEY=VELXIO_SECRET_KEY
+      - --
+    command: ["/app/entrypoint.sh"]
     environment:
-      - SECRET_KEY=${VELXIO_SECRET_KEY}
       - FRONTEND_URL=https://velxio.tecronin.uk
       - COOKIE_SECURE=true
     labels:

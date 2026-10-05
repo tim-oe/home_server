@@ -6,9 +6,14 @@ services:
     container_name: timescaledb
     hostname: timescaledb
     restart: unless-stopped
+    entrypoint:
+      - /bin/sh
+      - /map-env.sh
+      - POSTGRES_USER=TIMESCALEDB_USERNAME
+      - POSTGRES_PASSWORD=TIMESCALEDB_PASSWORD
+      - --
+    command: ["docker-entrypoint.sh", "postgres"]
     environment:
-      POSTGRES_USER: ${TIMESCALEDB_USERNAME}
-      POSTGRES_PASSWORD: ${TIMESCALEDB_PASSWORD}
       POSTGRES_DB: weather
     ports:
       - target: 5432
@@ -19,6 +24,8 @@ services:
       - timescaledb-data:/var/lib/postgresql/data
       - /etc/timezone:/etc/timezone:ro
       - /etc/localtime:/etc/localtime:ro
+      - /etc/environment:/etc/host-environment:ro
+      - ./_common/map-env.sh:/map-env.sh:ro
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U postgres"]
       interval: 30s

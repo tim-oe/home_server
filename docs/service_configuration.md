@@ -25,7 +25,7 @@
 ### SonarQube
 - **Purpose**: Code quality and security analysis
 - **Configuration Location**: `src/services/sonarqube/`
-- **Default Port**: 9000 (Postgres is compose-internal on `share-net`; password is `SONAR_DB_PASSWORD` in the host `.env`)
+- **Default Port**: 9000 (Postgres is compose-internal on `share-net`; password is `SONAR_DB_PASSWORD` in the host `/etc/environment`)
 - **Configuration Steps**:
   1. Database setup
   2. Quality profiles configuration
@@ -39,9 +39,9 @@
 - **Configuration Location**: `src/services/grafana/` — `provisioning/` and `dashboards/` are bind-mounted
 - **Default Port**: 3000
 - **Configuration Steps**:
-  1. Stack `.env` on the host: `GRAFANA_USERNAME`, `GRAFANA_PASSWORD`, `GRAFANA_DOMAIN`, `GOTIFY_TOKEN`
+  1. Host `/etc/environment`: `GRAFANA_USERNAME`, `GRAFANA_PASSWORD`, `GRAFANA_DOMAIN`, `GOTIFY_TOKEN`
   2. Datasource, dashboards, contact point, and alert rules are provisioned from this repo
-  3. Create a dedicated Gotify application for alerts (not DIUN's) and put its token in `.env`
+  3. Create a dedicated Gotify application for alerts (not DIUN's) and put its token in `/etc/environment`
 
 ### Prometheus
 - **Purpose**: Time series scrape store for hosts, containers, and Traefik
@@ -76,7 +76,7 @@ node_exporter on each host (`:9100`), cAdvisor for containers on tec-desktop, Tr
   1. Static config in `traefik.yml`: entrypoints, Cloudflare DNS-01 resolver, docker and file providers
   2. Per-service routes as `traefik.*` labels on the service's own container
   3. File-provider exceptions in `dynamic/`: LAN allow list, UniFi transport, external weather route
-  4. `CF_DNS_API_TOKEN` written once to `/mnt/raid/services/traefik/.env` on the host
+  4. `CF_DNS_API_TOKEN` in the host `/etc/environment`
 
 ## Security Services
 
@@ -156,10 +156,10 @@ DB_PASSWORD=your_secure_password
 # Backup Configuration
 BACKUP_RETENTION_DAYS=7
 
-# Traefik (src/services/traefik/.env on the host)
+# Traefik (host /etc/environment)
 CF_DNS_API_TOKEN=your_cloudflare_dns_token
 
-# Grafana (src/services/grafana/.env on the host)
+# Grafana (host /etc/environment)
 GRAFANA_USERNAME=admin
 GRAFANA_PASSWORD=your_secure_password
 GRAFANA_DOMAIN=grafana.tecronin.uk
@@ -167,12 +167,13 @@ GOTIFY_TOKEN=your_grafana_alert_app_token
 ```
 
 ### Host `/etc/environment`
-Injected into the rclone sidecars and DIUN via compose `env_file`, so notification tokens live in
-one place rather than per stack. Grafana's alert token is an exception: it lives in
-`/mnt/raid/services/grafana/.env` (`GOTIFY_TOKEN`).
+Service credentials are read from this file. Compose does not interpolate it, so each
+service mounts it and `src/services/_common/map-env.sh` exports the names that process
+expects. MariaDB is not in production and still uses its stack `.env`.
 ```bash
 GOTIFY_APP_TOKEN=your_rclone_app_token
 DIUN_NOTIF_GOTIFY_TOKEN=your_diun_app_token
+GOTIFY_DEFAULTUSER_PASS=your_admin_password
 ```
 
 ### Optional Environment Variables

@@ -28,10 +28,13 @@ services:
       - /tmp:exec
       - /var/lib/journal
       - /var/opt/unifi/tmp:size=64m
-    environment:
+    entrypoint:
+      - /bin/sh
+      - /map-env.sh
       # inform address handed to adopted devices, must be reachable from the 192.168.1.0/24 LAN
-      - UOS_SYSTEM_IP=${UOS_SYSTEM_IP}
-      - TZ=America/Chicago
+      - UOS_SYSTEM_IP=UOS_SYSTEM_IP
+      - --
+    command: ["/root/uos-entrypoint.sh"]
     volumes:
       - /sys/fs/cgroup:/sys/fs/cgroup:rw
       - unifi-os-persistent:/persistent
@@ -48,6 +51,8 @@ services:
       # https://github.com/lemker/unifi-os-server/issues/58
       - /dev/null:/etc/systemd/system/getty@.service:ro
       - /dev/null:/etc/systemd/system/serial-getty@.service:ro
+      - /etc/environment:/etc/host-environment:ro
+      - ./_common/map-env.sh:/map-env.sh:ro
       - /dev/null:/etc/systemd/system/console-getty.service:ro
       - /dev/null:/etc/systemd/system/container-getty@.service:ro
       - /dev/null:/etc/systemd/system/autovt@.service:ro

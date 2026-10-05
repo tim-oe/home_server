@@ -23,7 +23,7 @@ That same privileged systemd will spawn gettys on the host's TTYs and take over 
 # /mnt/raid/bin/volumes.sh   # or just the unifi-os-* lines
 
 # Inform address for adopted devices — LAN IP of tec-desktop, not unifi.tecronin.uk
-echo 'UOS_SYSTEM_IP=<lan-ip>' > /mnt/raid/services/unifi-os/.env
+# UOS_SYSTEM_IP=<lan-ip> in the host /etc/environment
 ```
 
 Routing is Traefik labels on `unifi-os-server` (`unifi.tecronin.uk`, `unifi-os-lan` ipAllowList, `unifi@file` transport).

@@ -9,20 +9,28 @@ services:
     image: lscr.io/linuxserver/mariadb:11.8.8
     container_name: bookstack_db
     restart: unless-stopped
+    entrypoint:
+      - /bin/sh
+      - /map-env.sh
+      - MYSQL_ROOT_PASSWORD=BOOKSTACK_DB_ROOT_PASSWORD
+      - MYSQL_PASSWORD=BOOKSTACK_DB_PASSWORD
+      - --
+    command: ["/init"]
     environment:
       PUID: 1000
       PGID: 1000
-      TZ: Europe/London                        # <-- set your timezone
-      MYSQL_ROOT_PASSWORD: ${BOOKSTACK_DB_ROOT_PASSWORD}
       MYSQL_DATABASE: bookstack
       MYSQL_USER: bookstack
-      MYSQL_PASSWORD: ${BOOKSTACK_DB_PASSWORD}
     volumes:
       - mariadb_data:/config
+      - /etc/environment:/etc/host-environment:ro
+      - ./_common/map-env.sh:/map-env.sh:ro
+      - /etc/timezone:/etc/timezone:ro
+      - /etc/localtime:/etc/localtime:ro
     labels:
       - docker-volume-backup.stop-during-backup=wiki.stop
     healthcheck:
-      test: ["CMD-SHELL", "mysqladmin ping -h localhost -u bookstack -p\"$$MYSQL_PASSWORD\""]
+      test: ["CMD-SHELL", "pw=$$(/bin/sh /map-env.sh --get BOOKSTACK_DB_PASSWORD); mysqladmin ping -h localhost -u bookstack -p\"$$pw\""]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -35,32 +43,40 @@ services:
     depends_on:
       mariadb:
         condition: service_healthy
+    entrypoint:
+      - /bin/sh
+      - /map-env.sh
+      - APP_KEY=BOOKSTACK_APP_KEY
+      - DB_PASSWORD=BOOKSTACK_DB_PASSWORD
+      - MAIL_HOST=SMTP_HOST
+      - MAIL_PORT=SMTP_PORT
+      - MAIL_USERNAME=SMTP_USERNAME
+      - MAIL_PASSWORD=SMTP_PASSWORD
+      - MAIL_FROM=SMTP_FROM
+      - --
+    command: ["/init"]
     environment:
       PUID: 1000
       PGID: 1000
-      TZ: America/Chicago                        # <-- set your timezone
       APP_URL: https://wiki.tecronin.uk
-      APP_KEY: ${BOOKSTACK_APP_KEY}
       APP_PROXIES: "*"
       DB_HOST: mariadb
       DB_PORT: 3306
       DB_USERNAME: bookstack
-      DB_PASSWORD: ${BOOKSTACK_DB_PASSWORD}
       DB_DATABASE: bookstack
       QUEUE_CONNECTION: database
       ALLOWED_ATTACHMENT_TYPES: "zip,json,xml,txt,pdf,doc,docx,xls,xlsx,ppt,pptx,csv,md,mp4,mov,avi,mkv"
       # mail settings
       MAIL_DRIVER: smtp
-      MAIL_HOST: ${SMTP_HOST}
-      MAIL_PORT: ${SMTP_PORT}
       MAIL_ENCRYPTION: tls
-      MAIL_USERNAME: ${SMTP_USERNAME}
-      MAIL_PASSWORD: ${SMTP_PASSWORD}
-      MAIL_FROM: ${SMTP_FROM}
       MAIL_FROM_NAME: "S&T Wiki"  
     volumes:
       - bookstack_config:/config
       - ./custom-php.ini:/etc/php85/conf.d/custom.ini
+      - /etc/environment:/etc/host-environment:ro
+      - ./_common/map-env.sh:/map-env.sh:ro
+      - /etc/timezone:/etc/timezone:ro
+      - /etc/localtime:/etc/localtime:ro
     labels:
       - docker-volume-backup.stop-during-backup=wiki.stop
       - traefik.enable=true

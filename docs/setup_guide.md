@@ -54,8 +54,7 @@
    ```bash
    ./gradlew deployTraefik
 
-   # on the host, after deploy so gradle does not clobber it
-   echo 'CF_DNS_API_TOKEN=<cloudflare-dns-token>' > /mnt/raid/services/traefik/.env
+   # on the host — CF_DNS_API_TOKEN=<cloudflare-dns-token> in /etc/environment
    cd /mnt/raid/services/traefik && sudo docker compose up -d
    ```
    Traefik requests the `*.tecronin.uk` wildcard on first start via the Cloudflare DNS-01

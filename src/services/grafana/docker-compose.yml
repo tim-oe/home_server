@@ -11,17 +11,27 @@ services:
     restart: unless-stopped
     ports:
       - "3000:3000"
+    # Host file keys are not the names Grafana reads. map-env exports the GF_*
+    # names (and https://$GRAFANA_DOMAIN) without replacing the image PATH.
+    entrypoint:
+      - /bin/sh
+      - /map-env.sh
+      - GF_SECURITY_ADMIN_USER=GRAFANA_USERNAME
+      - GF_SECURITY_ADMIN_PASSWORD=GRAFANA_PASSWORD
+      - GF_SECURITY_CSRF_TRUSTED_ORIGINS=GRAFANA_DOMAIN
+      - GOTIFY_TOKEN=GOTIFY_TOKEN
+      - "GF_SERVER_ROOT_URL=https://|GRAFANA_DOMAIN"
+      - --
+    command: ["/run.sh"]
     volumes:
       - grafana-data:/var/lib/grafana
       - ./provisioning:/etc/grafana/provisioning:ro
       - ./dashboards:/var/lib/grafana/dashboards:ro
       - /etc/timezone:/etc/timezone:ro
       - /etc/localtime:/etc/localtime:ro
+      - /etc/environment:/etc/host-environment:ro
+      - ./_common/map-env.sh:/map-env.sh:ro
     environment:
-      - GF_SECURITY_ADMIN_USER=${GRAFANA_USERNAME}
-      - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_PASSWORD}
-      - GF_SECURITY_CSRF_TRUSTED_ORIGINS=${GRAFANA_DOMAIN}
-      - GF_SERVER_ROOT_URL=https://${GRAFANA_DOMAIN}
       # SQLite under unified alerting; WAL + retries so provisioning is not
       # killed by a single lock from first-boot plugin installs.
       - GF_DATABASE_WAL=true
@@ -30,8 +40,6 @@ services:
       # 11.x preinstalls Loki/Pyroscope Explore apps on first boot; those
       # downloads lock sqlite and fail datasource provisioning.
       - GF_PLUGINS_PREINSTALL_DISABLED=true
-      # contactpoints.yml interpolates this at provision time
-      - GOTIFY_TOKEN=${GOTIFY_TOKEN}
     labels:
       # Unique value so other stacks' backups do not docker-stop this container.
       # Offen matches this against BACKUP_STOP_DURING_BACKUP_LABEL on the sidecar.
