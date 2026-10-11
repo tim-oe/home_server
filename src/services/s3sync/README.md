@@ -141,7 +141,8 @@ Snapshots appear after a backup run finishes. Paths start at `/data`, so `latop/
 
 ## Schedule
 
-Crontab inside the container: `30 1 * * *` (01:30). Overlapping runs are skipped (file lock).
+Crontab inside the container: `30 1 * * 6` (Saturday 01:30, weekly). A skipped run is not retried
+until the following Saturday; run `docker exec s3sync /bin/sh /s3-push.sh` to catch up by hand. Overlapping runs are skipped (file lock).
 Runs are skipped when `.backup-complete` is missing or newer than `QUIET_MINUTES`. After each
 finished snapshot, `restic forget --keep-weekly 4 --prune` drops older weeks. Prune does not run
 when the backup itself fails, so an interrupted upload is not deleted before the next run can

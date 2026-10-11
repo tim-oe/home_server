@@ -1,4 +1,5 @@
 PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
 
-# After local work backup to NAS; adjust if the upstream job runs later.
-30 1 * * * /bin/sh /s3-push.sh
+# Weekly, Saturday, after the local work backup to NAS; adjust if the upstream job runs later.
+# Kept off Sunday so the upload does not share the uplink with the unifi-os/wiki gdrive pushes.
+30 1 * * 6 /bin/sh /s3-push.sh

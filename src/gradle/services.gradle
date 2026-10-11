@@ -123,14 +123,6 @@ tasks.register('deployWiki', GradleBuild) {
     }
 }
 
-tasks.register('deployGdrive', GradleBuild) {
-    description = 'deploy gdrive orphan-path sync stack'
-    group = "deploy stuff"
-    buildName = 'gdrive'
-    startParameter.projectProperties = ['svc':'gdrive']
-    tasks = ['deployService']
-}
-
 tasks.register('deployS3sync', GradleBuild) {
     description = 'deploy s3 work-backup push stack and Backrest'
     group = "deploy stuff"
@@ -268,7 +260,6 @@ tasks.register('deployAll') {
         'deployObsidian',
         'deployVelxio',
         'deployTimescaledb',
-        'deployGdrive',
         'deployS3sync',
         'deployGotify',
         'deployForgejo',

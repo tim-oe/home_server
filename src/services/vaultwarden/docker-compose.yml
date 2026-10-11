@@ -97,7 +97,6 @@ services:
     labels:
       - docker-volume-backup.exec-label=vaultwarden
       - docker-volume-backup.prune-post=/bin/sh /rclone-sync.sh
-      - diun.enable=false
 volumes:
   vaultwarden-storage:
     name: vaultwarden-storage

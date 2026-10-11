@@ -5,7 +5,9 @@
 # dump mail config dd(config('mail'));
 services:
   # ─── MariaDB (required by BookStack — does not support PostgreSQL) ────────────
-  mariadb:
+  # Service name matches the container so share-net DNS stays bookstack_db.
+  # The standalone mariadb stack owns the name mariadb.
+  bookstack_db:
     image: lscr.io/linuxserver/mariadb:11.8.8
     container_name: bookstack_db
     restart: unless-stopped
@@ -41,7 +43,7 @@ services:
     container_name: bookstack
     restart: unless-stopped
     depends_on:
-      mariadb:
+      bookstack_db:
         condition: service_healthy
     entrypoint:
       - /bin/sh
@@ -60,7 +62,7 @@ services:
       PGID: 1000
       APP_URL: https://wiki.tecronin.uk
       APP_PROXIES: "*"
-      DB_HOST: mariadb
+      DB_HOST: bookstack_db
       DB_PORT: 3306
       DB_USERNAME: bookstack
       DB_DATABASE: bookstack
@@ -92,10 +94,11 @@ services:
     environment:
       EXEC_LABEL: wiki
       BACKUP_STOP_DURING_BACKUP_LABEL: wiki.stop
-      BACKUP_CRON_EXPRESSION: "0 2 * * *"
+      # weekly, Sunday; 20 not 21 days so the archive from 3 weeks ago is always past the cutoff
+      BACKUP_CRON_EXPRESSION: "0 2 * * 0"
       BACKUP_FILENAME: "bookstack-backup-%Y-%m-%dT%H-%M-%S.tar.gz"
       BACKUP_PRUNING_PREFIX: bookstack-backup-
-      BACKUP_RETENTION_DAYS: "7"
+      BACKUP_RETENTION_DAYS: "20"
     volumes:
       - /etc/timezone:/etc/timezone:ro
       - /etc/localtime:/etc/localtime:ro
@@ -117,7 +120,7 @@ services:
     environment:
       PATH: /usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
       RCLONE_SRC: /archive
-      RCLONE_DEST: gdrive:/backup/docker/wiki
+      RCLONE_DEST: gdrive:/backup/services/wiki
       GOTIFY_URL: http://gotify
     volumes:
       - /etc/timezone:/etc/timezone:ro

@@ -6,23 +6,31 @@ services:
     container_name: mariadb
     hostname: mariadb
     restart: unless-stopped
+    # Compose does not interpolate /etc/environment. map-env exports the
+    # MARIADB_* names the entrypoint reads without replacing the image PATH.
+    entrypoint:
+      - /bin/sh
+      - /map-env.sh
+      - MARIADB_ROOT_PASSWORD=MARIADB_ROOT_PASSWORD
+      - MARIADB_DATABASE=MARIADB_DATABASE
+      - MARIADB_USER=MARIADB_USER
+      - MARIADB_PASSWORD=MARIADB_PASSWORD
+      - --
+    command: ["docker-entrypoint.sh", "mariadbd"]
     environment:
-      MARIADB_ROOT_PASSWORD: ${MARIADB_ROOT_PASSWORD}
-      MARIADB_DATABASE: ${MARIADB_DATABASE}
-      MARIADB_USER: ${MARIADB_USERNAME}
-      MARIADB_PASSWORD: ${MARIADB_PASSWORD}
       MARIADB_AUTO_UPGRADE: "1"
+      # Used only when the data directory is first created.
+      MARIADB_ROOT_HOST: "192.168.1.%"
     ports:
-      - target: 3306
-        published: 3306
-        protocol: tcp
-        mode: host
+      - "3306:3306"
     volumes:
       - mariadb-data:/var/lib/mysql
       - mariadb-dumps:/dumps
       - ./dump.sh:/usr/local/bin/dump.sh:ro
       - /etc/timezone:/etc/timezone:ro
       - /etc/localtime:/etc/localtime:ro
+      - /etc/environment:/etc/host-environment:ro
+      - ./_common/map-env.sh:/map-env.sh:ro
     labels:
       # mariadb-backup reads these via docker.sock and runs dump.sh before archiving
       - docker-volume-backup.exec-label=mariadb

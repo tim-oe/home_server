@@ -102,10 +102,11 @@ services:
     environment:
       EXEC_LABEL: unifi-os
       BACKUP_STOP_DURING_BACKUP_LABEL: unifi-os.stop
-      BACKUP_CRON_EXPRESSION: "15 01 * * *"
+      # weekly, Sunday; 20 not 21 days so the archive from 3 weeks ago is always past the cutoff
+      BACKUP_CRON_EXPRESSION: "15 01 * * 0"
       BACKUP_FILENAME: backup-%Y-%m-%dT%H-%M-%S.tar.gz
       BACKUP_PRUNING_PREFIX: backup-
-      BACKUP_RETENTION_DAYS: 7
+      BACKUP_RETENTION_DAYS: 20
     volumes:
       # force local TZ to avoid chron math
       - /etc/timezone:/etc/timezone:ro

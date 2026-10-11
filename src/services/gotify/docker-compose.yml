@@ -48,30 +48,6 @@ services:
       - /mnt/backup/docker/gotify:/archive
     labels:
       - diun.enable=false
-  gdrive:
-    image: rclone/rclone:1.75.0
-    container_name: gotify-gdrive
-    restart: unless-stopped
-    # alpine busybox sleep has no infinity; idle until offen execs prune-post
-    entrypoint: ["tail", "-f", "/dev/null"]
-    env_file:
-      - path: /etc/environment
-        required: false
-    environment:
-      PATH: /usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
-      RCLONE_SRC: /archive
-      RCLONE_DEST: gdrive:/backup/services/gotify
-      GOTIFY_URL: http://gotify
-    volumes:
-      - /etc/timezone:/etc/timezone:ro
-      - /etc/localtime:/etc/localtime:ro
-      - /root/.config/rclone/rclone.conf:/config/rclone/rclone.conf:ro
-      - /mnt/backup/docker/gotify:/archive:ro
-      - ./_common/rclone-sync.sh:/rclone-sync.sh:ro
-    labels:
-      - docker-volume-backup.exec-label=gotify
-      - docker-volume-backup.prune-post=/bin/sh /rclone-sync.sh
-      - diun.enable=false
 volumes:
   gotify-data:
     name: gotify-data

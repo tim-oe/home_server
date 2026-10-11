@@ -48,8 +48,7 @@ cd /mnt/raid/services/vaultwarden && sudo docker compose up -d
 Every `deploy<Svc>` task delegates to `deployService`, which creates
 `/mnt/raid/services/<svc>`, copies the stack, and copies `_common/` into it. Secrets are **not** in
 this repo. Service credentials live in the host `/etc/environment`. Each stack mounts that
-file and maps the keys its process expects. MariaDB is not in production yet and still
-reads `/mnt/raid/services/mariadb/.env`.
+file and maps the keys its process expects.
 
 `deployMariadb` is deliberately outside `deployAll` — that stack is not in production yet.
 
@@ -77,7 +76,6 @@ reads `/mnt/raid/services/mariadb/.env`.
 | [nut_webgui](https://github.com/superioone/nut_webgui) | `upsdesktop.tecronin.uk`, `upspimgr.tecronin.uk` | UPS monitoring, one container per UPS |
 | [rabbitmq](https://www.rabbitmq.com/) | `mq.tecronin.uk` | management UI; AMQP and MQTT published on the LAN |
 | timescaledb, mariadb | — | LAN-only datastores |
-| gdrive | — | offsite sync for backup paths with no owning stack |
 | s3sync | `backrest.tecronin.uk` | Restic backup of the NAS work tree (`/mnt/backup/work`) to AWS S3; Backrest browses and restores |
 | restorer | — | throwaway ubuntu shell for poking at volumes |
 
@@ -144,7 +142,8 @@ stay unset until the repo exists and the first push has been done interactively 
 
 ## Backups
 
-Three tiers, in the order data moves: named volume → NAS → Google Drive.
+Three tiers, in the order data moves: named volume → NAS → Google Drive. Only vaultwarden,
+unifi-os and wiki go all the way to Google Drive; everything else stops at the NAS.
 
 ### Volume archives to the NAS
 
@@ -175,12 +174,12 @@ records each run it repaired, so a later manual stop of that service stays down.
 | Stack | Volume archived | Runs at |
 |---|---|---|
 | vaultwarden | `vaultwarden-storage` | 01:05 |
-| unifi-os | six `unifi-os-*` volumes (`var-log` excluded) | 01:15 |
+| unifi-os | six `unifi-os-*` volumes (`var-log` excluded); weekly, 20 days kept (3 archives) | Sun 01:15 |
 | mariadb | `mariadb-dumps` | 01:25 |
 | grafana | `grafana-data` | 01:35 |
 | gotify | `gotify-data` | 01:45 |
 | traefik | `traefik-acme` | 01:50 |
-| wiki | `mariadb_data`, `bookstack_config` | 02:00 |
+| wiki | `mariadb_data`, `bookstack_config`; weekly, 20 days kept (3 archives) | Sun 02:00 |
 | forgejo | `forgejo-data` (the one GPG-encrypted archive) | 02:15 |
 | rustdesk | `rustdesk-data` | 02:25 |
 
@@ -195,8 +194,8 @@ and private keys in plaintext. The passphrase lives in Vaultwarden.
 
 ### Offsite to Google Drive
 
-Each of those stacks also runs an idle [rclone](https://rclone.org/) sidecar — `tail -f /dev/null`
-until offen execs it:
+Drive space is limited, so only vaultwarden, unifi-os and wiki push offsite. Each runs an idle
+[rclone](https://rclone.org/) sidecar — `tail -f /dev/null` until offen execs it:
 
 ```yaml
     labels:
@@ -213,19 +212,12 @@ to Gotify on a non-zero exit.
 |---|---|
 | `/mnt/backup/docker/vaultwarden` | `gdrive:/backup/services/vault` |
 | `/mnt/backup/docker/unifi-os` | `gdrive:/backup/services/unifi-os` |
-| `/mnt/backup/docker/gotify` | `gdrive:/backup/services/gotify` |
-| `/mnt/backup/docker/grafana` | `gdrive:/backup/services/grafana` |
-| `/mnt/backup/docker/traefik` | `gdrive:/backup/services/traefik` |
-| `/mnt/backup/docker/wiki` | `gdrive:/backup/docker/wiki` |
-| `/mnt/backup/docker/forgejo` | `gdrive:/backup/services/forgejo` |
-| `/mnt/backup/docker/rustdesk` | `gdrive:/backup/services/rustdesk` |
-| `/mnt/backup/docker/services` | `gdrive:/backup/docker/services` |
-| `/mnt/backup/weather/db` | `gdrive:/backup/weather/db` |
+| `/mnt/backup/docker/wiki` | `gdrive:/backup/services/wiki` |
 
 The remote is configured once on the host at `/root/.config/rclone/rclone.conf` and mounted
 read-only into each sidecar.
 
-### Config zip, and the paths nobody owns
+### Config zip
 
 `services_backup.sh` runs from `/etc/cron.d/service_backup_cron` at 08:00 and zips
 `/mnt/raid/services` plus `/etc/environment` to `/mnt/backup/docker/services/svc-<date>.zip`,
@@ -233,11 +225,8 @@ keeping 15 days. That zip is the recovery path for every stack without a volume 
 nexus, sonarqube, openhab, portainer, obsidian, velxio, rabbitmq, timescaledb, and
 prometheus keep state in named volumes that are deliberately **not** archived, on the basis that
 they can be rebuilt from compose plus that config. Grafana's volume is archived; its dashboards
-and alert rules also live in git under `src/services/grafana/`.
-
-The last two rows of the table above have no offen instance to hang a `prune-post` on, so
-`src/services/gdrive/` covers them with a busybox `crond` at 08:15. It replaced the old host rclone
-cron and the `/opt/rclone` install.
+and alert rules also live in git under `src/services/grafana/`. The zip and the WeatherWatch dumps
+in `/mnt/backup/weather/db` stay on the NAS.
 
 ### Restore
 
@@ -276,7 +265,7 @@ git stays the source of truth for tags.
 `obsidian-remote` and `velxio` only publish a moving tag (`latest` / `master`), so they are watched
 by digest with `diun.watch_repo=false`. Jenkins and SonarQube use `diun.include_tags` to filter
 noisy upstream tags. Sidecar copies of `offen` and `rclone` carry `diun.enable=false`, so each image
-alerts once — from `vaultwarden-backup` and `gdrive-sync` respectively.
+alerts once — from `vaultwarden-backup` and `vaultwarden-gdrive` respectively.
 
 ## kvm
 - [setup bridged network nm](https://gist.github.com/plembo/f7abd2d9b6f76e7afdece02dae7e5097)

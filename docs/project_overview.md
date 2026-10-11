@@ -41,15 +41,14 @@ This project implements a comprehensive home lab cloud-like setup for developmen
    - Purpose: Quick recovery and local redundancy
 
 2. **Offsite copy**
-   - Implementation: an idle `rclone` sidecar per stack, exec'd by offen's `prune-post` hook so the
-     sync runs after retention has been applied
+   - Implementation: an idle `rclone` sidecar in the vaultwarden, unifi-os and wiki stacks only, exec'd
+     by offen's `prune-post` hook so the sync runs after retention has been applied
    - Configuration: `/root/.config/rclone/rclone.conf`, mounted read-only
    - Purpose: Off-site disaster recovery
 
 3. **Config zip**
-   - Implementation: `services_backup.sh` from host cron, plus the `gdrive` stack for the backup
-     paths that have no owning compose stack
-   - Target: `/mnt/backup/docker/services`, then Google Drive
+   - Implementation: `services_backup.sh` from host cron
+   - Target: `/mnt/backup/docker/services` on the NAS
    - Purpose: rebuild any stack that keeps no archived volume
 
 Details, schedules and destinations: the backup section of the [main README](../README.md).

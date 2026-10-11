@@ -169,7 +169,7 @@ GOTIFY_TOKEN=your_grafana_alert_app_token
 ### Host `/etc/environment`
 Service credentials are read from this file. Compose does not interpolate it, so each
 service mounts it and `src/services/_common/map-env.sh` exports the names that process
-expects. MariaDB is not in production and still uses its stack `.env`.
+expects.
 ```bash
 GOTIFY_APP_TOKEN=your_rclone_app_token
 DIUN_NOTIF_GOTIFY_TOKEN=your_diun_app_token
