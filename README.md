@@ -171,7 +171,10 @@ issued the stop, the script starts the matching containers and posts to Gotify. 
 still going is left alone, including when an array check makes the archive slow. The script
 records each run it repaired, so a later manual stop of that service stays down.
 
-| Stack | Volume archived | Runs at |
+The sidecars use UTC. The times below are the intended local CST times; their cron expressions are
+six hours later (for example, 02:00 CST is configured as 08:00 UTC).
+
+| Stack | Volume archived | Runs at (CST) |
 |---|---|---|
 | vaultwarden | `vaultwarden-storage` | 01:05 |
 | unifi-os | six `unifi-os-*` volumes (`var-log` excluded); weekly, 20 days kept (3 archives) | Sun 01:15 |
@@ -219,7 +222,7 @@ read-only into each sidecar.
 
 ### Config zip
 
-`services_backup.sh` runs from `/etc/cron.d/service_backup_cron` at 08:00 and zips
+`services_backup.sh` runs from `/etc/cron.d/service_backup_cron` at 02:00 CST (08:00 UTC) and zips
 `/mnt/raid/services` plus `/etc/environment` to `/mnt/backup/docker/services/svc-<date>.zip`,
 keeping 15 days. That zip is the recovery path for every stack without a volume sidecar: jenkins,
 nexus, sonarqube, openhab, portainer, obsidian, velxio, rabbitmq, timescaledb, and

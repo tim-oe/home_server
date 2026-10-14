@@ -41,7 +41,7 @@ services:
     environment:
       EXEC_LABEL: rustdesk
       BACKUP_STOP_DURING_BACKUP_LABEL: rustdesk.stop
-      BACKUP_CRON_EXPRESSION: "25 02 * * *"
+      BACKUP_CRON_EXPRESSION: "25 08 * * *"
       BACKUP_FILENAME: backup-%Y-%m-%dT%H-%M-%S.tar.gz
       BACKUP_PRUNING_PREFIX: backup-
       BACKUP_RETENTION_DAYS: 7

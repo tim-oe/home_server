@@ -49,7 +49,7 @@ services:
     environment:
       # match mariadb's docker-volume-backup.exec-label; runs that container's archive-pre (dump.sh)
       EXEC_LABEL: mariadb
-      BACKUP_CRON_EXPRESSION: "25 01 * * *"
+      BACKUP_CRON_EXPRESSION: "25 07 * * *"
       BACKUP_FILENAME: backup-%Y-%m-%dT%H-%M-%S.tar.gz
       BACKUP_PRUNING_PREFIX: backup-
       BACKUP_RETENTION_DAYS: 7

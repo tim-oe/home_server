@@ -36,7 +36,7 @@ services:
     environment:
       EXEC_LABEL: gotify
       BACKUP_STOP_DURING_BACKUP_LABEL: gotify.stop
-      BACKUP_CRON_EXPRESSION: "45 01 * * *"
+      BACKUP_CRON_EXPRESSION: "45 07 * * *"
       BACKUP_FILENAME: backup-%Y-%m-%dT%H-%M-%S.tar.gz
       BACKUP_PRUNING_PREFIX: backup-
       BACKUP_RETENTION_DAYS: 7

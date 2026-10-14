@@ -95,7 +95,7 @@ services:
       EXEC_LABEL: wiki
       BACKUP_STOP_DURING_BACKUP_LABEL: wiki.stop
       # weekly, Sunday; 20 not 21 days so the archive from 3 weeks ago is always past the cutoff
-      BACKUP_CRON_EXPRESSION: "0 2 * * 0"
+      BACKUP_CRON_EXPRESSION: "0 8 * * 0"
       BACKUP_FILENAME: "bookstack-backup-%Y-%m-%dT%H-%M-%S.tar.gz"
       BACKUP_PRUNING_PREFIX: bookstack-backup-
       BACKUP_RETENTION_DAYS: "20"
