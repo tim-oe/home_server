@@ -34,8 +34,9 @@ Do not skip a gate. Detail and commands are in **Phases** and **Task list** belo
 
 The station-to-station move
 ([WeatherWatch `mariadb_trixie_migration_runbook`](https://github.com/tim-oe/WeatherWatch/blob/main/.cursor/plans/mariadb_trixie_migration_runbook_3f04a621.plan.md))
-already built the tooling: `db-archive.sh`, `db-stale-tables.sh`, `db-inventory.sh`, `db-dump.sh` and
-`db-restore.sh` in the WeatherWatch repo. This plan reuses those scripts. What is new is everything that
+already built the tooling: `db-archive.sh`, `db-inventory.sh`, `db-dump.sh` and `db-restore.sh` in the
+WeatherWatch repo (`db-stale-tables.sh` exists but **this run skips it** — see Decisions). This plan reuses
+those scripts. What is new is everything that
 follows from the database no longer being on the station's localhost, from there being **two** writers to
 quiesce instead of one, and from the fact that the tooling was built but **not proved** — that migration lost
 the historic contents of six tables.
@@ -125,16 +126,16 @@ condition, positioned so that every destructive or hard-to-reverse step sits on 
   Anything it writes between the dump and the repoint is silently lost.
 - **Recreate the database users by hand from captured grants.** A logical dump of the application schemas does
   not carry the `mysql` system database, so no user, password or grant survives the move.
-- **The station database stays byte-identical until Phase 4.** The Trixie runbook dropped the stale `*_old`
-  tables on the source before dumping, which makes the source no longer a complete rollback at the exact
-  moment the rollback is most likely to be needed. Here the strays are excluded at dump time with
-  `--ignore-table` instead, and nothing on tec-weather is modified before the cutover has been verified. The
-  drops, if still wanted, happen in Phase 4 against a database that is no longer the only copy.
-- **Phase 0 verifies the recovery's cleanup rather than assuming it.** `weather_hist`, `weather_new` and the
-  six `*_pre_recovery` tables are due to be dropped shortly, which removes the problem entirely — but the
-  schema enumeration in Phase 0 is a `SELECT`, so it costs nothing to have it confirm they are gone instead of
-  taking it on trust. If any of them is still there when the dump is taken, it is excluded explicitly.
-  Assuming the schema list is just `weather` is how the last migration went wrong.
+- **Small-schema simplification (this run).** Skip `db-stale-tables.sh` and skip `--ignore-table` lists for
+  recovery strays. The only non-live leftovers were the six `*_pre_recovery` staging tables; historic readings
+  live in the normal tables (`outdoor_sensor`, …, `sonic_reading`, etc.). **Drop those six on tec-weather
+  before Phase 2** (after you are satisfied the live tables are correct — G1.5 already proved restore parity).
+  If any stray table appears on the container after restore, `DROP TABLE` by hand there; the database is small
+  enough that this is faster and fewer moving parts than generated ignore lists. `db-archive.sh` still runs at
+  cutover for rollback; it captures whatever schema exists at freeze time (without `_pre_recovery` once dropped).
+- **Phase 0 / cleanup.** Confirm `weather_hist` and `weather_new` are gone if they ever existed. Confirm the
+  six `*_pre_recovery` tables are **dropped on the station** before the Phase 2 migration dump (not deferred to
+  Phase 4 for this run).
 - **Row counts are what release the cutover.** Both writers stay down until every table in every schema
   matches its pre-dump count exactly, and the maximum acceptable difference is zero rows.
 - **Keep the existing container backup model.** MariaDB is the one stack that stays up during its backup: the
@@ -856,16 +857,11 @@ counts from Phase 0's queries. Write them to the share.
 4. Run `db-archive.sh` for the pre-migration archive of everything as it stands, and verify its sha256. This
    is the file that saved the last migration. It is not a keepsake; it is the outermost rollback, and Phase 4
    keeps it permanently.
-5. **Do not run the stale-table drops.** Exclude strays at dump time with `--ignore-table` instead, per the
-   decision above, and leave tec-weather untouched. The canonical WeatherWatch set is `outdoor_sensor`,
-   `indoor_sensor`, `aqi_sensor`, `light_sensor`, `pi_metrics`, `sdr_metrics`, `sonic_reading`,
-   `apscheduler_jobs`, `pyway`, plus piSolar's tables; anything else — including any `*_pre_recovery` table
-   the recovery cleanup has not yet removed — gets an `--ignore-table`. Run `db-stale-tables.sh` in report
-   mode to generate that list, but apply nothing.
-6. Run `db-dump.sh` — `--single-transaction --quick --hex-blob --routines --events --triggers
-   --default-character-set=utf8mb4`, `--ignore-table` for `apscheduler_jobs` and each stray, gzipped with a
-   sha256 sidecar. **Extend `--databases` to every application schema found in Phase 0**, not just `weather`,
-   and **exclude `weather_hist` and `weather_new`** if the recovery cleanup has not run.
+5. **Station cleanup before dump (this run).** The six `*_pre_recovery` tables should already be dropped on
+   tec-weather. Do not run `db-stale-tables.sh`.
+6. Run `db-dump.sh` (same as Phase 1.5: full logical `weather` schema). **Extend `--databases` to every
+   application schema found in Phase 0**, not just `weather`, if piSolar uses a separate schema. Gzipped dump
+   with sha256 sidecar.
 7. Note the maximum `read_time` per table, the maximum `id` per table, and the equivalent high-water values in
    piSolar's tables. Those are the boundaries the first post-cutover rows must sit above.
 
@@ -1080,7 +1076,7 @@ deletions, so anything left inside a synced tree is one stray `rm` away from bei
 
 **Stop and disable MariaDB on tec-weather**, but do not purge it. Keep the datadir until the container has a
 couple of weeks, a passing seven-day G3, and a verified offsite restore behind it. Only then consider the
-stale-table drops that this plan deliberately deferred out of Phase 2.
+any optional strays still on the container (hand `DROP TABLE` if needed).
 
 **Turn off the app-side DB backup**: `WW_DB_BACKUP_ENABLE=false` on the station. Otherwise the 03:00 job keeps
 dumping the now-remote database into `/mnt/backup/weather/db`, duplicating what offen archives at 01:25.
@@ -1138,9 +1134,9 @@ was easier than deciding not to.
 
 Two properties make all of these cheap, and both are deliberate:
 
-- **The station database is not modified before Phase 4.** `--single-transaction` dumps read; the stale-table
-  drops are deferred; the datadir stays in place. Right up to the Phase 3 cutover the station is a complete,
-  bootable copy of the data.
+- **The station datadir stays in place until Phase 4** (MariaDB stopped, not purged). This run **does** drop the
+  six `*_pre_recovery` tables on the station before Phase 2; that is staging data, not live collection. Live
+  reading tables — including `sonic_reading` — are unchanged.
 - **The container holds no other data.** Until this migration it has never been in production, so
   `DROP DATABASE` is a genuinely available reset. There is never a reason to attempt a partial repair of a bad
   restore under time pressure — start it again from the dump instead, which is a thing this plan can afford
@@ -1155,8 +1151,8 @@ side of six gates.
 
 ### Phase 0: discovery
 
-- [ ] Confirm the recovery's Phase 5 cleanup has run — no `weather_hist`, no `weather_new`, no
-  `*_pre_recovery` tables — or record the exact objects to exclude everywhere.
+- [ ] Confirm `weather_hist` / `weather_new` absent. **Drop the six `*_pre_recovery` tables on tec-weather**
+  before Phase 2 (live historic data remains in the normal reading tables, e.g. `sonic_reading`).
 - [ ] Record `SELECT VERSION();` on tec-weather and pick the container tag from it — equal or newer, never
   older.
 - [ ] Enumerate application schemas and their sizes on tec-weather; confirm whether piSolar writes into
@@ -1226,11 +1222,9 @@ side of six gates.
 - [ ] **Gate G2a:** units inactive, `PROCESSLIST` free of application connections, and per-table `COUNT(*)`
   and `MAX(id)` identical across two samples ninety seconds apart. Record those static counts as the
   authoritative baseline and write them to the share.
-- [ ] Run `db-archive.sh` and verify its checksum. **Do not apply any stale-table drops** — generate the
-  report only, and turn the strays into `--ignore-table` arguments.
-- [ ] Run `db-dump.sh` with `--databases` covering every application schema, `--ignore-table` for
-  `apscheduler_jobs` and each stray, and the recovery staging schemas excluded. Record the high-water
-  `MAX(<time column>)` and `MAX(id)` per table.
+- [ ] Run `db-archive.sh` and verify its checksum.
+- [ ] Confirm `*_pre_recovery` tables are already dropped on tec-weather. Run `db-dump.sh` (full `weather`
+  dump, same as 1.5). Record high-water `MAX(<time column>)` and `MAX(id)` per table.
 - [ ] **Gate G2b:** `gzip -t` passes, the `-- Dump completed` sentinel is present, and every table on the
   closed list has both a `-- Dumping data for table` marker and `INSERT INTO` lines behind it.
 - [ ] Restore into the container with `set -o pipefail`, `--max-allowed-packet=256M`, both output streams to a
@@ -1240,7 +1234,8 @@ side of six gates.
   the `COUNT(*) = MAX(id)` relationship unchanged; `AUTO_INCREMENT` greater than `MAX(id)`; per-partition
   distribution unchanged.
 - [ ] **Gate G2e:** no application table is empty unless the baseline said so, and the table list matches the
-  Phase 0 closed list exactly — nothing missing, no `_old` or `_pre_recovery` stowaways.
+  Phase 0 closed list exactly — nothing missing, no `_pre_recovery` or other stowaways (hand-drop on the
+  container if the dump predated station cleanup).
 - [ ] **Gate G2f:** replay the captured grants and verify every application user exists with the right scope;
   confirm partitions, `aqi_clean` and a clean `pyway info` — necessary checks, not sufficient ones.
 - [ ] Size `innodb_buffer_pool_size` from the actual dataset size and redeploy.
@@ -1278,4 +1273,4 @@ side of six gates.
   [the handoff section](#handoff-weatherwatch-should-adopt-pisolars-utc-convention). WeatherWatch only —
   piSolar is already correct. Include correcting the `V1_3_6__sonic_reading.sql` comment so a future
   SonicModBus follows piSolar rather than `LocalToUTCDateTime`.
-- [ ] Only after all of the above, consider the stale-table drops deferred out of Phase 2.
+- [ ] Only after all of the above, confirm no `_pre_recovery` (or other stray) tables remain on production.

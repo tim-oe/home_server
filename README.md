@@ -149,8 +149,9 @@ unifi-os and wiki go all the way to Google Drive; everything else stops at the N
 
 Stacks holding data that cannot be rebuilt run an [offen/docker-volume-backup](https://github.com/offen/docker-volume-backup/)
 sidecar: **vaultwarden, unifi-os, wiki, gotify, traefik, grafana, forgejo, rustdesk** (plus mariadb, deferred). Each sidecar has its own cron, writes a timestamped `.tar.gz` into
-`/mnt/backup/docker/<svc>`, and prunes it to `BACKUP_RETENTION_DAYS: 7` by matching
-`BACKUP_PRUNING_PREFIX`.
+`/mnt/backup/docker/<svc>`, and prunes by matching `BACKUP_PRUNING_PREFIX`. NAS-only stacks
+keep 7 days. The three that also sync to Google Drive (vaultwarden, unifi-os, wiki) run weekly
+and keep 20 days, which is three archives.
 
 Two conventions matter:
 
@@ -176,7 +177,7 @@ six hours later (for example, 02:00 CST is configured as 08:00 UTC).
 
 | Stack | Volume archived | Runs at (CST) |
 |---|---|---|
-| vaultwarden | `vaultwarden-storage` | 01:05 |
+| vaultwarden | `vaultwarden-storage`; weekly, 20 days kept (3 archives) | Sun 01:05 |
 | unifi-os | six `unifi-os-*` volumes (`var-log` excluded); weekly, 20 days kept (3 archives) | Sun 01:15 |
 | mariadb | `mariadb-dumps` | 01:25 |
 | grafana | `grafana-data` | 01:35 |
@@ -197,7 +198,8 @@ and private keys in plaintext. The passphrase lives in Vaultwarden.
 
 ### Offsite to Google Drive
 
-Drive space is limited, so only vaultwarden, unifi-os and wiki push offsite. Each runs an idle
+Drive space is limited, so only vaultwarden, unifi-os and wiki push offsite. Those three are the
+weekly jobs above, so each remote holds the same three archives the NAS just pruned to. Each runs an idle
 [rclone](https://rclone.org/) sidecar — `tail -f /dev/null` until offen execs it:
 
 ```yaml

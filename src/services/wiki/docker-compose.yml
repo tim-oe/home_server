@@ -36,6 +36,8 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
+      # linuxserver mariadb is still initializing past the default 5 retries (~50s)
+      start_period: 2m
 
   # ─── BookStack ────────────────────────────────────────────────────────────────
   bookstack:

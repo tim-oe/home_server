@@ -37,7 +37,7 @@ This project implements a comprehensive home lab cloud-like setup for developmen
 ### Three-Tier Backup System
 1. **Local volume archives**
    - Implementation: an `offen/docker-volume-backup` sidecar per stack that holds irreplaceable data
-   - Target: `/mnt/backup/docker/<svc>` on the NAS, 7 day retention
+   - Target: `/mnt/backup/docker/<svc>` on the NAS. NAS-only stacks keep 7 days; vaultwarden, unifi-os and wiki are weekly and keep 3 archives (20 days)
    - Purpose: Quick recovery and local redundancy
 
 2. **Offsite copy**
